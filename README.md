@@ -1,4 +1,4 @@
-# Compteur de points
+# Brand Hunters · Compteur de points
 
 Site web pour compter les points pendant une partie de jeu de société, **sur téléphone comme sur ordinateur**.
 HTML, CSS et JavaScript natifs : aucun framework, aucune bibliothèque, aucune étape de build.
@@ -7,8 +7,9 @@ Toutes les données restent dans le navigateur (`localStorage`).
 | Fichier | Rôle |
 | --- | --- |
 | `index.html` | Structure des 4 écrans (configuration, partie, résultats, historique) et des fenêtres de dialogue |
-| `style.css` | Mise en page téléphone, tablette et ordinateur, thème clair/sombre automatique |
+| `style.css` | Mise en page téléphone, tablette et ordinateur, aux couleurs de Brand Hunters |
 | `script.js` | Logique : joueurs, scores, tours, chronomètre, minuteur, sauvegarde, historique |
+| `fonts/` | Polices Rye et Poppins hébergées avec le site, avec leurs licences |
 
 ## Fonctionnalités
 
@@ -29,6 +30,44 @@ Toutes les données restent dans le navigateur (`localStorage`).
   - « Terminer la partie » affiche le classement final et l'enregistre dans l'historique ;
   - l'historique permet de supprimer une partie ;
   - « Rejouer avec les mêmes joueurs » ouvre la configuration pré-remplie : il ne reste qu'à toucher « Commencer ». En ordre aléatoire, un nouveau tirage est fait.
+
+## Direction artistique
+
+L'interface reprend l'univers du jeu physique Brand Hunters.
+
+**Palette**
+
+Les couleurs sont des variables en haut de `style.css`. Je les ai relevées sur les visuels : remplacez-les par les codes exacts de la charte si besoin.
+
+| Variable | Couleur | Usage |
+| --- | --- | --- |
+| `--plum` | `#2B1528` | Fond, texte sur les boutons orange |
+| `--burgundy` | `#4C1A38` | Surfaces secondaires |
+| `--red` | `#D33F3D` | Boutons « retirer », alertes, 3e place |
+| `--orange` | `#E1793A` | Bouton principal, joueur dont c'est le tour, 2e place |
+| `--olive` | `#96813A` | Boutons « ajouter » (un peu assombri, `#857230`, pour la lisibilité) |
+| `--sand` | `#EFB683` | Titres, onglet sélectionné, 1re place |
+
+**Typographies**
+
+- **Rye** : titres « western », logo, affiche WANTED.
+- **Poppins** : textes.
+
+Elles sont hébergées dans `fonts/` (licence SIL OFL, fichiers de licence inclus). Aucun appel n'est fait à Google Fonts : rien n'est transmis à un service tiers (RGPD), et les polices fonctionnent hors ligne.
+
+**Logo**
+
+Le bandeau d'accueil affiche une version provisoire du logo, recréée en texte. Pour mettre le vrai logo :
+
+1. Déposez le fichier (par exemple `logo.svg`) à côté d'`index.html`.
+2. Remplacez le bloc `<svg class="wordmark">…</svg>` par `<img class="wordmark" src="logo.svg" alt="Brand Hunters">`.
+
+**Ambiance**
+
+- Bandeau en dégradé coucher de soleil, avec dune, cactus et étincelles.
+- Étoile de shérif pour le joueur dont c'est le tour.
+- En fin de partie, le gagnant apparaît sur une **affiche WANTED**, avec son score comme « prime ».
+- Un seul thème, sombre, aux couleurs de la marque.
 
 ## Sur ordinateur
 

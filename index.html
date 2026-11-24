@@ -3,15 +3,14 @@
 <head>
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
-  <meta name="color-scheme" content="light dark">
-  <meta name="theme-color" content="#f4f1ec" media="(prefers-color-scheme: light)">
-  <meta name="theme-color" content="#121117" media="(prefers-color-scheme: dark)">
-  <meta name="description" content="Compteur de points pour vos parties de jeux de société : scores, classement en direct, chronomètre, minuteur par tour et historique des parties.">
+  <meta name="color-scheme" content="dark">
+  <meta name="theme-color" content="#2B1528">
+  <meta name="description" content="Brand Hunters — compteur de points pour vos parties : scores, classement en direct, chronomètre, minuteur par tour et historique des parties.">
   <meta name="mobile-web-app-capable" content="yes">
   <meta name="apple-mobile-web-app-capable" content="yes">
-  <meta name="apple-mobile-web-app-title" content="Points">
-  <title>Compteur de points</title>
-  <link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 64 64'%3E%3Crect width='64' height='64' rx='14' fill='%235146d8'/%3E%3Cg fill='%23fff'%3E%3Ccircle cx='20' cy='20' r='6'/%3E%3Ccircle cx='44' cy='20' r='6'/%3E%3Ccircle cx='32' cy='32' r='6'/%3E%3Ccircle cx='20' cy='44' r='6'/%3E%3Ccircle cx='44' cy='44' r='6'/%3E%3C/g%3E%3C/svg%3E">
+  <meta name="apple-mobile-web-app-title" content="Brand Hunters">
+  <title>Brand Hunters · Compteur de points</title>
+  <link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 64 64'%3E%3Crect width='64' height='64' rx='14' fill='%232B1528'/%3E%3Cpath fill='%23E1793A' d='M32 7l7.6 15.4 17 2.5-12.3 12 2.9 16.9L32 45.8l-15.2 8 2.9-16.9-12.3-12 17-2.5z'/%3E%3C/svg%3E">
   <link rel="stylesheet" href="style.css">
   <script src="script.js" defer></script>
 </head>
@@ -39,6 +38,9 @@
     <symbol id="i-plus" viewBox="0 0 24 24"><path d="M12 5v14M5 12h14"/></symbol>
     <symbol id="i-flag" viewBox="0 0 24 24"><path d="M5 21V4"/><path d="M5 4h12l-2.5 4.5L17 13H5"/></symbol>
     <symbol id="i-timer" viewBox="0 0 24 24"><circle cx="12" cy="13" r="8"/><path d="M12 9v4l2.5 2"/><path d="M9.5 2h5"/></symbol>
+    <symbol id="i-star" viewBox="0 0 24 24"><path fill="currentColor" stroke="none" d="M12 1.8l3.1 6.3 6.9 1-5 4.9 1.2 6.9L12 17.6l-6.2 3.3L7 14 2 9.1l6.9-1z"/></symbol>
+    <symbol id="i-sparkle" viewBox="0 0 24 24"><path fill="currentColor" stroke="none" d="M12 0C13 8 16 11 24 12 16 13 13 16 12 24 11 16 8 13 0 12 8 11 11 8 12 0Z"/></symbol>
+    <symbol id="i-cactus" viewBox="0 0 60 100"><path fill="currentColor" stroke="none" d="M24 100V20a6 6 0 0 1 12 0v34h6V32a5 5 0 0 1 10 0v24a8 8 0 0 1-8 8h-8v36zM24 64h-8a8 8 0 0 1-8-8V44a5 5 0 0 1 10 0v14h6z"/></symbol>
     <symbol id="i-keyboard" viewBox="0 0 24 24"><rect x="2.5" y="6" width="19" height="12" rx="2.5"/><path d="M6.5 10h.01M10.5 10h.01M14.5 10h.01M18 10h.01M7.5 14h9"/></symbol>
     <symbol id="i-keypad" viewBox="0 0 24 24"><circle cx="6" cy="6" r="1.5" fill="currentColor" stroke="none"/><circle cx="12" cy="6" r="1.5" fill="currentColor" stroke="none"/><circle cx="18" cy="6" r="1.5" fill="currentColor" stroke="none"/><circle cx="6" cy="12" r="1.5" fill="currentColor" stroke="none"/><circle cx="12" cy="12" r="1.5" fill="currentColor" stroke="none"/><circle cx="18" cy="12" r="1.5" fill="currentColor" stroke="none"/><circle cx="6" cy="18" r="1.5" fill="currentColor" stroke="none"/><circle cx="12" cy="18" r="1.5" fill="currentColor" stroke="none"/><circle cx="18" cy="18" r="1.5" fill="currentColor" stroke="none"/></symbol>
   </svg>
@@ -53,19 +55,42 @@
          1. CONFIGURATION DE LA PARTIE
          ================================================================= -->
     <section class="screen" id="screen-setup" data-screen="setup" hidden>
-      <header class="app-bar">
-        <div class="brand">
-          <span class="brand-logo" aria-hidden="true"><svg class="icon"><use href="#i-dice"></use></svg></span>
-          <h1 class="brand-title">Compteur de points</h1>
-        </div>
-        <button type="button" class="btn btn-ghost btn-sm" data-action="open-history" aria-label="Historique des parties">
-          <svg class="icon" aria-hidden="true"><use href="#i-history"></use></svg>
-          <span class="hide-narrow">Historique</span>
-        </button>
-      </header>
-
       <form class="screen-form" id="setup-form" novalidate autocomplete="off">
         <div class="screen-body">
+          <header class="hero">
+            <div class="hero-top">
+              <p class="hero-kicker"><svg class="icon" aria-hidden="true"><use href="#i-star"></use></svg>Compteur de points</p>
+              <button type="button" class="hero-btn" data-action="open-history" aria-label="Historique des parties">
+                <svg class="icon" aria-hidden="true"><use href="#i-history"></use></svg>
+                <span class="hide-narrow">Historique</span>
+              </button>
+            </div>
+            <!-- Logo provisoire en texte : à remplacer par le fichier du vrai logo (SVG ou PNG) -->
+            <h1 class="hero-logo">
+              <svg class="wordmark" viewBox="0 20 360 142" role="img" aria-label="Brand Hunters">
+                <text class="wm-brand" transform="translate(130.0 58.0) scale(0.8 1)" font-size="30.0">B</text>
+                <text class="wm-brand" transform="translate(155.0 55.0) scale(0.8 1)" font-size="31.5">R</text>
+                <text class="wm-brand" transform="translate(180.0 54.0) scale(0.8 1)" font-size="32.0">A</text>
+                <text class="wm-brand" transform="translate(205.0 55.0) scale(0.8 1)" font-size="31.5">N</text>
+                <text class="wm-brand" transform="translate(230.0 58.0) scale(0.8 1)" font-size="30.0">D</text>
+                <text class="wm-hunters" transform="translate(39.0 134.0) scale(0.8 1)" font-size="64.0">H</text>
+                <text class="wm-hunters" transform="translate(86.0 125.1) scale(0.8 1)" font-size="71.8">U</text>
+                <text class="wm-hunters" transform="translate(133.0 119.8) scale(0.8 1)" font-size="76.4">N</text>
+                <text class="wm-hunters" transform="translate(180.0 118.0) scale(0.8 1)" font-size="78.0">T</text>
+                <text class="wm-hunters" transform="translate(227.0 119.8) scale(0.8 1)" font-size="76.4">E</text>
+                <text class="wm-hunters" transform="translate(274.0 125.1) scale(0.8 1)" font-size="71.8">R</text>
+                <text class="wm-hunters" transform="translate(321.0 134.0) scale(0.8 1)" font-size="64.0">S</text>
+                <path class="wm-swoosh" d="M40 152 Q180 120 320 152"/>
+                <path class="wm-star" transform="translate(162 119) scale(1.5)" d="M12 1.8l3.1 6.3 6.9 1-5 4.9 1.2 6.9L12 17.6l-6.2 3.3L7 14 2 9.1l6.9-1z"/>
+              </svg>
+            </h1>
+            <p class="hero-tagline">Chaque logo a sa tête mise à prix.</p>
+            <svg class="hero-ground" viewBox="0 0 400 40" preserveAspectRatio="none" aria-hidden="true"><path d="M0 26 C60 6 120 8 190 20 S320 30 400 12 V40 H0 Z"/></svg>
+            <svg class="hero-cactus" aria-hidden="true"><use href="#i-cactus"></use></svg>
+            <svg class="hero-sparkle" aria-hidden="true"><use href="#i-sparkle"></use></svg>
+            <svg class="hero-sparkle hero-sparkle-2" aria-hidden="true"><use href="#i-sparkle"></use></svg>
+          </header>
+
           <div class="setup-grid">
 
           <section class="card card-players" aria-labelledby="players-title">
@@ -237,15 +262,20 @@
          ================================================================= -->
     <section class="screen" id="screen-results" data-screen="results" hidden>
       <div class="screen-body results-body">
-        <div class="results-hero">
-          <div class="trophy" aria-hidden="true"><svg class="icon"><use href="#i-trophy"></use></svg></div>
-          <p class="results-kicker">Partie terminée</p>
-          <h1 class="results-title" id="results-title"></h1>
-          <p class="results-sub" id="results-sub"></p>
+        <div class="wanted">
+          <div class="wanted-paper">
+            <p class="wanted-title" aria-hidden="true">
+              <svg class="icon"><use href="#i-star"></use></svg>WANTED<svg class="icon"><use href="#i-star"></use></svg>
+            </p>
+            <p class="wanted-kicker" id="results-kicker">Vainqueur de la partie</p>
+            <h1 class="wanted-name" id="results-title"></h1>
+            <div class="wanted-row" id="wanted-row"><span>Prime</span><strong id="wanted-bounty"></strong></div>
+            <p class="wanted-text" id="results-sub"></p>
+          </div>
         </div>
+        <div class="pill-row" id="results-meta"></div>
         <h2 class="section-title">Classement final</h2>
         <ol class="ranking-list" id="final-ranking"></ol>
-        <p class="results-meta" id="results-meta"></p>
       </div>
       <div class="screen-footer" data-toast-anchor>
         <button type="button" class="btn btn-primary btn-xl btn-block" data-action="replay-last">
@@ -273,7 +303,7 @@
       </header>
       <div class="screen-body">
         <div class="empty-state" id="history-empty" hidden>
-          <div class="empty-icon" aria-hidden="true"><svg class="icon"><use href="#i-history"></use></svg></div>
+          <div class="empty-icon" aria-hidden="true"><svg class="empty-cactus"><use href="#i-cactus"></use></svg></div>
           <p class="empty-title">Aucune partie terminée</p>
           <p class="hint">Vos parties apparaîtront ici après « Terminer la partie ».</p>
         </div>

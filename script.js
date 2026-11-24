@@ -45,11 +45,16 @@ const ALARM_GRACE_MS = 5000;
 const ALARM_VIBRATION = [300, 120, 300, 120, 600];
 /** [début (s), durée (s), fréquence (Hz)] */
 const ALARM_BEEPS = [[0, 0.16, 880], [0.24, 0.16, 880], [0.48, 0.16, 880], [0.8, 0.55, 1175]];
-/** Une couleur par place de joueur (saisie 1 → couleur 1, etc.). */
+/**
+ * Une couleur par place de joueur (saisie 1 → couleur 1, etc.) : les couleurs de
+ * la DA Brand Hunters, complétées de tons « western » (turquoise, denim, cactus…).
+ */
 const PLAYER_COLORS = Object.freeze([
-  '#e5484d', '#3e63dd', '#30a46c', '#f76b15', '#8e4ec6',
-  '#0d9488', '#d6409f', '#b7791f', '#0284c7', '#6b7280',
+  '#E1793A', '#2E9C8F', '#C2477F', '#96813A', '#4F7CAC',
+  '#D33F3D', '#E8C547', '#8A5CC2', '#5E8C3A', '#EFB683',
 ]);
+const INK_DARK = '#2B1528';  // prune de la DA
+const INK_LIGHT = '#FFF8EE';
 /** Au-delà de cette largeur : mise en page « ordinateur » (classement affiché en permanence). */
 const DESKTOP_QUERY = window.matchMedia('(min-width: 900px)');
 const IS_MAC = /Mac|iPhone|iPad|iPod/.test(navigator.platform || navigator.userAgent);
@@ -74,7 +79,28 @@ function escapeHtml(value) {
 }
 
 function safeColor(color) {
-  return /^#[0-9a-f]{6}$/i.test(color) ? color : '#6b7280';
+  return /^#[0-9a-f]{6}$/i.test(color) ? color : '#96813A';
+}
+
+function luminance(hex) {
+  const [r, g, b] = [1, 3, 5]
+    .map((i) => parseInt(hex.slice(i, i + 2), 16) / 255)
+    .map((v) => (v <= 0.03928 ? v / 12.92 : ((v + 0.055) / 1.055) ** 2.4));
+  return 0.2126 * r + 0.7152 * g + 0.0722 * b;
+}
+
+/** Couleur de texte la plus lisible (prune ou blanc cassé) sur un fond donné. */
+function readableOn(hex) {
+  const l = luminance(hex);
+  const onDark = (l + 0.05) / (luminance(INK_DARK) + 0.05);
+  const onLight = (luminance(INK_LIGHT) + 0.05) / (l + 0.05);
+  return onDark >= onLight ? INK_DARK : INK_LIGHT;
+}
+
+/** Variables CSS d'une pastille de joueur : sa couleur et une couleur de texte lisible. */
+function colorVars(color) {
+  const c = safeColor(color);
+  return `--c:${c};--on-c:${readableOn(c)}`;
 }
 
 function icon(name) {
@@ -408,7 +434,7 @@ function renderNameInputs() {
     const item = document.createElement('li');
     item.className = 'name-item';
     item.innerHTML = `
-      <span class="avatar" style="--c:${PLAYER_COLORS[i]}" aria-hidden="true"></span>
+      <span class="avatar" style="${colorVars(PLAYER_COLORS[i])}" aria-hidden="true"></span>
       <div class="name-field">
         <label class="visually-hidden" for="name-${i}">Prénom du joueur ${i + 1}</label>
         <input class="input" id="name-${i}" type="text" data-name-index="${i}"
@@ -521,7 +547,7 @@ function renderOrderList() {
         <span class="drag-handle" data-drag-handle aria-hidden="true">${icon('grip')}</span>` : '';
     return `
       <li class="order-item" data-pos="${pos}">
-        <span class="order-pos" style="--c:${PLAYER_COLORS[slot]}">${pos + 1}</span>
+        <span class="order-pos" style="${colorVars(PLAYER_COLORS[slot])}">${pos + 1}</span>
         <span class="order-name${placeholder}">${label}</span>${controls}
       </li>`;
   }).join('');
@@ -899,7 +925,7 @@ function renderPlayerList(g, totals, ranking) {
     const last = lastById.get(p.id);
     const classes = ['player-card', isCurrent && 'is-current', isTarget && 'is-target'].filter(Boolean).join(' ');
     const badges = [
-      isCurrent ? '<span class="badge badge-turn">À son tour</span>' : '',
+      isCurrent ? `<span class="badge badge-turn">${icon('star')}À son tour</span>` : '',
       isTarget && !isCurrent ? '<span class="badge badge-target">Sélectionné</span>' : '',
       showRanks ? `<span class="badge badge-rank" data-rank="${Math.min(rank, 4)}">${rankLabel(rank)}</span>` : '',
       last !== undefined ? `<span class="last-entry ${last < 0 ? 'is-neg' : 'is-pos'}">dernier : ${formatSigned(last)}</span>` : '',
@@ -907,7 +933,7 @@ function renderPlayerList(g, totals, ranking) {
     return `
       <li data-player-id="${escapeHtml(p.id)}">
         <button type="button" class="${classes}" data-action="select-player" data-index="${i}" aria-pressed="${isTarget}"${isCurrent ? ' aria-current="true"' : ''}>
-          <span class="avatar" style="--c:${safeColor(p.color)}" aria-hidden="true">${escapeHtml(initial(p.name))}</span>
+          <span class="avatar" style="${colorVars(p.color)}" aria-hidden="true">${escapeHtml(initial(p.name))}</span>
           <span class="player-main">
             <span class="player-name">${escapeHtml(p.name)}</span>
             <span class="player-meta">${badges}</span>
@@ -934,7 +960,7 @@ function rankingRowHtml(row) {
   return `
     <li class="rank-row${row.rank === 1 ? ' is-first' : ''}">
       <span class="rank-pos" data-rank="${Math.min(row.rank, 4)}">${row.rank}</span>
-      <span class="avatar avatar-sm" style="--c:${safeColor(row.color)}" aria-hidden="true">${escapeHtml(initial(row.name))}</span>
+      <span class="avatar avatar-sm" style="${colorVars(row.color)}" aria-hidden="true">${escapeHtml(initial(row.name))}</span>
       <span class="rank-name">${escapeHtml(row.name)}${row.gap ? `<small>${escapeHtml(row.gap)}</small>` : ''}</span>
       <span class="rank-score">${formatNumber(row.score)}</span>
     </li>`;
@@ -960,7 +986,7 @@ function renderSheet(g, totals) {
   });
 
   const head = g.players.map((p) => `
-    <th scope="col"><span class="sheet-player"><span class="dot" style="--c:${safeColor(p.color)}"></span><span class="sheet-name">${escapeHtml(p.name)}</span></span></th>`).join('');
+    <th scope="col"><span class="sheet-player"><span class="dot" style="${colorVars(p.color)}"></span><span class="sheet-name">${escapeHtml(p.name)}</span></span></th>`).join('');
   const totalRow = g.players.map((p) => `<td>${formatNumber(totals[p.id])}</td>`).join('');
 
   let body = '';
@@ -994,7 +1020,7 @@ function renderSheet(g, totals) {
 
 function renderControls(g) {
   const target = g.players[g.target];
-  $('#target-name').innerHTML = `<span class="dot" style="--c:${safeColor(target.color)}"></span>${escapeHtml(target.name)}`;
+  $('#target-name').innerHTML = `<span class="dot" style="${colorVars(target.color)}"></span>${escapeHtml(target.name)}`;
   $('#target-off-turn').hidden = g.target === g.current;
   $('#undo-btn').disabled = g.entries.length === 0;
   $('#prev-btn').disabled = g.round <= 1 && g.current === 0;
@@ -1423,7 +1449,7 @@ function renderCustomTargets() {
   $('#custom-targets').innerHTML = g.players.map((p, i) => {
     const selected = i === state.customTarget;
     return `<button type="button" class="target-chip${selected ? ' is-selected' : ''}" data-action="custom-target" data-index="${i}" data-keep-focus aria-pressed="${selected}">
-      <span class="dot" style="--c:${safeColor(p.color)}"></span>${escapeHtml(p.name)}</button>`;
+      <span class="dot" style="${colorVars(p.color)}"></span>${escapeHtml(p.name)}</button>`;
   }).join('');
 }
 
@@ -1724,27 +1750,38 @@ function renderResults() {
   const ranked = sortedByRank(result.players);
   const winners = ranked.filter((p) => p.rank === 1);
 
-  let title;
-  let subtitle;
+  // Affiche « WANTED » : le gagnant, et sa prime (son score).
+  let kicker;
+  let name;
+  let text;
   if (!result.saved) {
-    title = 'Partie terminée';
-    subtitle = 'Aucun point n’a été saisi.';
+    kicker = 'Partie terminée';
+    name = 'Aucun gagnant';
+    text = 'Aucun point n’a été saisi : la partie n’est pas enregistrée.';
   } else if (winners.length === 1) {
-    title = `${winners[0].name} gagne !`;
-    subtitle = `avec ${formatPoints(winners[0].score)}`;
+    kicker = 'Vainqueur de la partie';
+    name = winners[0].name;
+    text = `${winners[0].name} remporte la partie !`;
   } else {
-    title = 'Égalité !';
-    subtitle = `${joinNames(winners.map((w) => w.name))} terminent premiers avec ${formatPoints(winners[0].score)}`;
+    kicker = `Égalité entre ${winners.length} joueurs`;
+    name = joinNames(winners.map((w) => w.name));
+    text = 'Égalité ! La prime est partagée.';
   }
-  $('#results-title').textContent = title;
-  $('#results-sub').textContent = subtitle;
+  const title = $('#results-title');
+  $('#results-kicker').textContent = kicker;
+  title.textContent = name;
+  title.classList.toggle('is-long', name.length > 12);
+  $('#results-sub').textContent = text;
+  $('#wanted-row').hidden = !result.saved;
+  $('#wanted-bounty').textContent = result.saved ? formatPoints(winners[0].score) : '';
+
   $('#final-ranking').innerHTML = withGaps(ranked, result.saved).map(rankingRowHtml).join('');
-  $('#results-meta').textContent = [
-    `Durée : ${formatDuration(result.durationMs)}`,
-    plural(result.rounds, 'tour'),
-    ruleLabel(result.winRule),
-    result.saved ? 'Enregistrée dans l’historique' : 'Non enregistrée',
-  ].join(' · ');
+  $('#results-meta').innerHTML = [
+    `${icon('timer')}${formatDuration(result.durationMs)}`,
+    `${icon('flag')}${plural(result.rounds, 'tour')}`,
+    `${icon('trophy')}${result.winRule === 'low' ? 'Le plus bas gagne' : 'Le plus haut gagne'}`,
+    `${icon('history')}${result.saved ? 'Enregistrée' : 'Non enregistrée'}`,
+  ].map((content) => `<span class="pill">${content}</span>`).join('');
 }
 
 function renderHistory() {
@@ -1765,7 +1802,7 @@ function renderHistory() {
     const scores = ranked.map((p) => `
       <li>
         <span class="rank-pos rank-pos-sm" data-rank="${Math.min(p.rank, 4)}">${p.rank}</span>
-        <span class="dot" style="--c:${safeColor(p.color)}"></span>
+        <span class="dot" style="${colorVars(p.color)}"></span>
         <span class="history-name">${escapeHtml(p.name)}</span>
         <span class="history-score">${formatNumber(p.score)}</span>
       </li>`).join('');

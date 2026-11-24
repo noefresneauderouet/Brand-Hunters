@@ -2,106 +2,130 @@
    Compteur de points — styles
    -----------------------------------------------------------------------------
    Mobile-first : pensé pour un téléphone tenu d'une main (gros boutons en bas
-   de l'écran), puis centré sur les écrans plus larges.
-   Thème clair ou sombre automatique selon le réglage du téléphone.
+   de l'écran), puis adapté aux tablettes et aux ordinateurs.
+   Direction artistique Brand Hunters : prune, coucher de soleil, sable, western.
    ========================================================================== */
 
 
-/* 1. Variables ============================================================= */
+/* 1. Polices et variables (DA Brand Hunters) ============================= */
+
+/* Polices hébergées avec le site (aucun appel à un service externe, RGPD) :
+   Rye pour les titres « western », Poppins pour le texte. Licence SIL OFL (voir fonts/). */
+@font-face {
+  font-family: "Rye";
+  font-style: normal;
+  font-weight: 400;
+  font-display: swap;
+  src: url("fonts/rye-latin-400-normal.woff2") format("woff2");
+}
+
+@font-face {
+  font-family: "Poppins";
+  font-style: normal;
+  font-weight: 400;
+  font-display: swap;
+  src: url("fonts/poppins-latin-400-normal.woff2") format("woff2");
+}
+
+@font-face {
+  font-family: "Poppins";
+  font-style: normal;
+  font-weight: 500;
+  font-display: swap;
+  src: url("fonts/poppins-latin-500-normal.woff2") format("woff2");
+}
+
+@font-face {
+  font-family: "Poppins";
+  font-style: normal;
+  font-weight: 600;
+  font-display: swap;
+  src: url("fonts/poppins-latin-600-normal.woff2") format("woff2");
+}
+
+@font-face {
+  font-family: "Poppins";
+  font-style: normal;
+  font-weight: 700;
+  font-display: swap;
+  src: url("fonts/poppins-latin-700-normal.woff2") format("woff2");
+}
+
+@font-face {
+  font-family: "Poppins";
+  font-style: normal;
+  font-weight: 800;
+  font-display: swap;
+  src: url("fonts/poppins-latin-800-normal.woff2") format("woff2");
+}
 
 :root {
-  color-scheme: light;
+  color-scheme: dark;
 
-  --bg: #f4f1ec;
-  --bg-outer: #e8e3da;
-  --surface: #ffffff;
-  --surface-2: #eee9e1;
-  --surface-3: #e2dcd2;
-  --border: #e2dbcf;
-  --border-strong: #c8bfb1;
-  --text: #1c1a17;
-  --text-muted: #6b645b;
+  /* Palette de la DA (relevée sur les visuels : à remplacer par les codes exacts si besoin) */
+  --plum: #2B1528;
+  --burgundy: #4C1A38;
+  --red: #D33F3D;
+  --orange: #E1793A;
+  --olive: #96813A;
+  --sand: #EFB683;
+  --paper: #F3CB97;
+  --cream: #FBEBD7;
+  --sunset: linear-gradient(135deg, #2B1528 0%, #4C1A38 30%, #B0353D 62%, #DD6A38 84%, #EC9443 100%);
 
-  --accent: #5146d8;
-  --accent-strong: #4136c4;
-  --accent-soft: #e8e6fc;
-  --accent-contrast: #ffffff;
-  --focus: #5146d8;
+  /* Rôles dans l'interface */
+  --bg: var(--plum);
+  --bg-outer: #1E0E1B;
+  --surface: #3A1C34;
+  --surface-2: var(--burgundy);
+  --surface-3: #5E2549;
+  --input-bg: var(--plum);
+  --border: rgba(239, 182, 131, 0.14);
+  --border-strong: rgba(239, 182, 131, 0.34);
+  --text: var(--cream);
+  --text-muted: #D4B497;
 
-  --plus: #17834a;
-  --plus-strong: #11703e;
-  --plus-text: #157a44;
-  --plus-soft: #e2f3e8;
-  --minus: #cf3434;
-  --minus-strong: #b32727;
-  --minus-text: #c02e2e;
-  --minus-soft: #fbe5e5;
-  --warn: #d98200;
-  --warn-soft: #fdf0d9;
-  --warn-text: #8a5300;
+  --accent: var(--orange);
+  --accent-strong: #EC8B4D;
+  --accent-soft: rgba(225, 121, 58, 0.2);
+  --accent-contrast: var(--plum);
+  --focus: var(--sand);
 
-  --gold: #f2c14e;
-  --gold-text: #4a3500;
-  --silver: #d5d9e0;
-  --silver-text: #2f343c;
-  --bronze: #e6ad7e;
-  --bronze-text: #4a2507;
+  /* Ajouter (olive de la DA, un peu assombri pour la lisibilité) / retirer (rouge) */
+  --plus: #857230;
+  --plus-strong: #76652A;
+  --plus-text: #CDB75C;
+  --plus-soft: rgba(150, 129, 58, 0.22);
+  --minus: var(--red);
+  --minus-strong: #BC3533;
+  --minus-text: #F26B62;
+  --minus-soft: rgba(211, 63, 61, 0.22);
+  --warn: var(--orange);
+  --warn-soft: rgba(225, 121, 58, 0.18);
+  --warn-text: #F5A56D;
 
-  --toast-bg: #1c1a17;
-  --toast-text: #ffffff;
-  --backdrop: rgba(20, 16, 30, 0.45);
+  /* Podium : sable, orange, rouge */
+  --gold: var(--sand);
+  --gold-text: var(--plum);
+  --silver: var(--orange);
+  --silver-text: var(--plum);
+  --bronze: var(--red);
+  --bronze-text: #FFF8EE;
 
-  --shadow-sm: 0 1px 2px rgba(45, 35, 20, 0.06), 0 2px 8px rgba(45, 35, 20, 0.05);
-  --shadow-md: 0 4px 16px rgba(45, 35, 20, 0.1);
-  --shadow-lg: 0 12px 32px rgba(45, 35, 20, 0.2);
+  --toast-bg: var(--sand);
+  --toast-text: var(--plum);
+  --backdrop: rgba(18, 7, 16, 0.72);
+
+  --shadow-sm: 0 1px 2px rgba(0, 0, 0, 0.3), 0 2px 8px rgba(0, 0, 0, 0.18);
+  --shadow-md: 0 6px 18px rgba(0, 0, 0, 0.35);
+  --shadow-lg: 0 14px 36px rgba(0, 0, 0, 0.5);
 
   --radius-sm: 12px;
   --radius: 16px;
   --radius-lg: 22px;
 
-  --font: system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif;
-}
-
-@media (prefers-color-scheme: dark) {
-  :root {
-    color-scheme: dark;
-
-    --bg: #121117;
-    --bg-outer: #0b0a0f;
-    --surface: #1e1d25;
-    --surface-2: #292732;
-    --surface-3: #34313f;
-    --border: #312e3b;
-    --border-strong: #4a4658;
-    --text: #f3f1f8;
-    --text-muted: #a8a4b6;
-
-    --accent: #7c70ff;
-    --accent-strong: #6a5dff;
-    --accent-soft: #2b2752;
-    --accent-contrast: #ffffff;
-    --focus: #a59dff;
-
-    --plus: #1b8f52;
-    --plus-strong: #167a45;
-    --plus-text: #4fd08c;
-    --plus-soft: #173326;
-    --minus: #d23d3d;
-    --minus-strong: #b83131;
-    --minus-text: #ff7d7d;
-    --minus-soft: #3a1c1f;
-    --warn: #f0a030;
-    --warn-soft: #3a2c12;
-    --warn-text: #ffc46b;
-
-    --toast-bg: #f3f1f8;
-    --toast-text: #121117;
-    --backdrop: rgba(0, 0, 0, 0.6);
-
-    --shadow-sm: 0 1px 2px rgba(0, 0, 0, 0.35);
-    --shadow-md: 0 4px 16px rgba(0, 0, 0, 0.4);
-    --shadow-lg: 0 12px 32px rgba(0, 0, 0, 0.55);
-  }
+  --font: "Poppins", system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
+  --font-display: "Rye", "Rockwell Extra Bold", Rockwell, Georgia, serif;
 }
 
 
@@ -124,8 +148,8 @@ body {
   min-height: 100%;
   font-family: var(--font);
   font-size: 1rem;
-  line-height: 1.4;
-  background: var(--bg);
+  line-height: 1.45;
+  background: radial-gradient(120% 45% at 50% -8%, rgba(76, 26, 56, 0.95), transparent 70%), var(--bg);
   color: var(--text);
   -webkit-tap-highlight-color: transparent;
   overscroll-behavior: none;
@@ -251,7 +275,12 @@ kbd {
   font-size: 0.75rem;
 }
 
-.btn-primary .kbd,
+.btn-primary .kbd {
+  border-color: rgba(43, 21, 40, 0.35);
+  background: rgba(43, 21, 40, 0.1);
+  color: inherit;
+}
+
 .quick-btn .kbd {
   border-color: rgba(255, 255, 255, 0.35);
   background: rgba(255, 255, 255, 0.16);
@@ -291,7 +320,6 @@ kbd {
   margin: 0 auto;
   padding-left: env(safe-area-inset-left);
   padding-right: env(safe-area-inset-right);
-  background: var(--bg);
 }
 
 .screen {
@@ -350,41 +378,21 @@ kbd {
 }
 
 .app-bar-title {
-  font-size: 1.125rem;
-  font-weight: 800;
+  color: var(--sand);
+  font-family: var(--font-display);
+  font-size: 1.375rem;
+  font-weight: 400;
 }
 
-.brand {
-  display: flex;
-  align-items: center;
-  gap: 10px;
-  min-width: 0;
-}
 
-.brand-logo {
-  display: grid;
-  place-items: center;
-  width: 34px;
-  height: 34px;
-  flex: none;
-  border-radius: 10px;
-  background: var(--accent);
-  color: #fff;
-  font-size: 1.125rem;
-}
 
-.brand-title {
-  overflow: hidden;
-  font-size: 1.0625rem;
-  font-weight: 800;
-  letter-spacing: -0.01em;
-  white-space: nowrap;
-  text-overflow: ellipsis;
-}
 
 .section-title {
+  display: flex;
+  align-items: center;
+  gap: 8px;
   margin: 24px 4px 10px;
-  color: var(--text-muted);
+  color: var(--sand);
   font-size: 0.8125rem;
   font-weight: 700;
   letter-spacing: 0.06em;
@@ -528,11 +536,6 @@ kbd {
   font-weight: 700;
 }
 
-@media (prefers-color-scheme: dark) {
-  .link-btn {
-    color: var(--focus);
-  }
-}
 
 
 /* 5. Formulaire de configuration =========================================== */
@@ -555,8 +558,11 @@ kbd {
 }
 
 .card-title {
+  display: flex;
+  align-items: center;
+  gap: 8px;
   margin-bottom: 12px;
-  color: var(--text-muted);
+  color: var(--sand);
   font-size: 0.8125rem;
   font-weight: 800;
   letter-spacing: 0.06em;
@@ -637,7 +643,7 @@ kbd {
   padding: 12px 14px;
   border: 2px solid var(--border);
   border-radius: 14px;
-  background: var(--surface);
+  background: var(--input-bg);
   color: var(--text);
   font-size: 1.0625rem; /* ≥ 16px : évite le zoom automatique sur iPhone */
   transition: border-color 0.15s ease, box-shadow 0.15s ease;
@@ -690,7 +696,7 @@ kbd {
   flex: none;
   border-radius: 50%;
   background: var(--c);
-  color: #fff;
+  color: var(--on-c, #fff);
   font-size: 1.0625rem;
   font-weight: 800;
 }
@@ -750,8 +756,8 @@ kbd {
 }
 
 .segment input:checked + span {
-  background: var(--surface);
-  color: var(--text);
+  background: var(--sand);
+  color: var(--plum);
   box-shadow: var(--shadow-sm);
 }
 
@@ -793,7 +799,7 @@ kbd {
   flex: none;
   border-radius: 50%;
   background: var(--c);
-  color: #fff;
+  color: var(--on-c, #fff);
   font-weight: 800;
   font-variant-numeric: tabular-nums;
 }
@@ -911,7 +917,7 @@ kbd {
   width: 26px;
   height: 26px;
   border-radius: 50%;
-  background: #fff;
+  background: var(--cream);
   box-shadow: 0 1px 3px rgba(0, 0, 0, 0.3);
   transition: transform 0.2s ease;
 }
@@ -1033,15 +1039,10 @@ kbd {
   font-size: 0.875rem;
 }
 
-@media (prefers-color-scheme: dark) {
-  .clock-icon {
-    color: var(--focus);
-  }
-}
 
 .screen-game.is-paused .clock-icon {
   background: var(--warn);
-  color: #fff;
+  color: var(--plum);
 }
 
 .screen-game.is-paused .clock-time {
@@ -1052,8 +1053,10 @@ kbd {
   flex: 1;
   min-width: 0;
   overflow: hidden;
-  color: var(--text-muted);
-  font-weight: 800;
+  color: var(--sand);
+  font-family: var(--font-display);
+  font-size: 1.125rem;
+  letter-spacing: 0.04em;
   text-align: center;
   white-space: nowrap;
   text-overflow: ellipsis;
@@ -1094,7 +1097,7 @@ kbd {
 .turn-timer-fill {
   height: 100%;
   border-radius: inherit;
-  background: var(--accent);
+  background: linear-gradient(90deg, #C7A54A, var(--orange));
   transform-origin: left center;
   transition: transform 0.25s linear, background-color 0.3s ease;
 }
@@ -1109,11 +1112,11 @@ kbd {
 }
 
 .turn-timer.is-warning .turn-timer-fill {
-  background: var(--warn);
+  background: var(--red);
 }
 
 .turn-timer.is-warning .turn-timer-text {
-  color: var(--warn-text);
+  color: var(--minus-text);
 }
 
 .turn-timer.is-expired {
@@ -1156,8 +1159,8 @@ kbd {
 }
 
 .tab[aria-selected="true"] {
-  background: var(--surface);
-  color: var(--text);
+  background: var(--sand);
+  color: var(--plum);
   box-shadow: var(--shadow-sm);
 }
 
@@ -1211,7 +1214,7 @@ kbd {
 .player-card.is-current {
   border-color: var(--accent);
   border-style: solid;
-  background: var(--accent-soft);
+  background: linear-gradient(135deg, rgba(225, 121, 58, 0.26), rgba(211, 63, 61, 0.12)), var(--surface);
 }
 
 .player-card.is-current::before {
@@ -1636,61 +1639,12 @@ kbd {
   padding-top: calc(16px + env(safe-area-inset-top));
 }
 
-.results-hero {
-  display: flex;
-  flex-direction: column;
-  align-items: center;
-  gap: 6px;
-  padding: 24px 8px 4px;
-  text-align: center;
-}
 
-.trophy {
-  display: grid;
-  place-items: center;
-  width: 96px;
-  height: 96px;
-  margin-bottom: 8px;
-  border-radius: 50%;
-  background: var(--gold);
-  color: var(--gold-text);
-  font-size: 3rem;
-  box-shadow: 0 0 0 10px color-mix(in srgb, var(--gold) 25%, transparent);
-  animation: pop 0.5s cubic-bezier(0.2, 1.4, 0.4, 1) both;
-}
 
-.trophy .icon {
-  stroke-width: 1.75;
-}
 
-.results-kicker {
-  color: var(--text-muted);
-  font-size: 0.8125rem;
-  font-weight: 800;
-  letter-spacing: 0.08em;
-  text-transform: uppercase;
-}
 
-.results-title {
-  font-size: 2rem;
-  font-weight: 900;
-  letter-spacing: -0.02em;
-  line-height: 1.1;
-  overflow-wrap: anywhere;
-}
 
-.results-sub {
-  color: var(--text-muted);
-  font-size: 1.0625rem;
-  font-weight: 600;
-}
 
-.results-meta {
-  margin-top: 16px;
-  color: var(--text-muted);
-  font-size: 0.875rem;
-  text-align: center;
-}
 
 
 /* 8. Historique ============================================================ */
@@ -1728,20 +1682,15 @@ kbd {
   margin: 12px 0 8px;
   padding: 8px 12px;
   border-radius: 12px;
-  background: var(--surface-2);
-  background: color-mix(in srgb, var(--gold) 22%, var(--surface));
+  background: var(--sand);
+  color: var(--plum);
   font-weight: 800;
 }
 
 .history-winner .icon {
-  color: var(--gold-text);
+  color: var(--plum);
 }
 
-@media (prefers-color-scheme: dark) {
-  .history-winner .icon {
-    color: var(--gold);
-  }
-}
 
 .history-scores {
   display: flex;
@@ -1795,9 +1744,13 @@ kbd {
   height: 64px;
   margin-bottom: 8px;
   border-radius: 50%;
-  background: var(--surface-2);
-  color: var(--text-muted);
-  font-size: 1.75rem;
+  background: var(--surface);
+  color: var(--olive);
+}
+
+.empty-cactus {
+  width: 26px;
+  height: 44px;
 }
 
 .empty-title {
@@ -1830,6 +1783,7 @@ dialog::backdrop {
 }
 
 .dialog-title {
+  color: var(--sand);
   font-size: 1.25rem;
   font-weight: 800;
 }
@@ -2195,10 +2149,6 @@ dialog::backdrop {
   to { opacity: 1; }
 }
 
-@keyframes pop {
-  from { opacity: 0; transform: scale(0.4); }
-}
-
 @keyframes modal-in {
   from { opacity: 0; transform: translateY(8px) scale(0.98); }
 }
@@ -2223,7 +2173,294 @@ dialog::backdrop {
 }
 
 
-/* 12. Souris : survol et barres de défilement =============================== */
+/* 12. Univers Brand Hunters : bandeau, logo, affiche WANTED ================= */
+
+/* Étincelle orange devant les titres, comme sur les visuels du jeu */
+.card-title::before,
+.section-title::before,
+.side-title::before {
+  content: "";
+  width: 10px;
+  height: 10px;
+  flex: none;
+  background: var(--orange);
+  clip-path: polygon(50% 0, 61% 39%, 100% 50%, 61% 61%, 50% 100%, 39% 61%, 0 50%, 39% 39%);
+}
+
+.badge .icon {
+  width: 0.95em;
+  height: 0.95em;
+  margin-right: 3px;
+}
+
+/* Bandeau d'accueil : coucher de soleil, logo, cactus */
+.hero {
+  position: relative;
+  isolation: isolate;
+  overflow: hidden;
+  margin: calc(12px + env(safe-area-inset-top)) 0 4px;
+  padding: 12px 14px 58px;
+  border-radius: 26px;
+  background:
+    radial-gradient(70% 90% at 88% 112%, rgba(255, 196, 120, 0.6), transparent 62%),
+    var(--sunset);
+  box-shadow: var(--shadow-md);
+  text-align: center;
+}
+
+.hero-top {
+  position: relative;
+  z-index: 2;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+  text-align: left;
+}
+
+.hero-kicker {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  color: var(--sand);
+  font-size: 0.75rem;
+  font-weight: 700;
+  letter-spacing: 0.14em;
+  text-transform: uppercase;
+}
+
+.hero-kicker .icon {
+  width: 1em;
+  height: 1em;
+  color: var(--orange);
+}
+
+.hero-btn {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  min-height: 40px;
+  padding: 0 14px;
+  border: 1px solid rgba(239, 182, 131, 0.35);
+  border-radius: 999px;
+  background: rgba(43, 21, 40, 0.45);
+  color: var(--cream);
+  font-size: 0.875rem;
+  font-weight: 600;
+  transition: background-color 0.15s ease, transform 0.08s ease;
+}
+
+.hero-btn:active {
+  transform: scale(0.97);
+}
+
+.hero-logo {
+  position: relative;
+  z-index: 2;
+  margin: 4px auto 0;
+  font-size: inherit;
+}
+
+/* Logo provisoire (texte) : à remplacer par le fichier du vrai logo */
+.wordmark {
+  display: block;
+  width: min(100%, 300px);
+  height: auto;
+  margin: 0 auto;
+  overflow: visible;
+  filter: drop-shadow(0 3px 0 rgba(43, 21, 40, 0.55));
+}
+
+/* Chaque lettre est placée à la main (ligne de base en arche, centre plus haut) */
+.wordmark text {
+  fill: var(--sand);
+  font-family: var(--font-display);
+  text-anchor: middle;
+}
+
+.wm-swoosh {
+  fill: none;
+  stroke: var(--orange);
+  stroke-linecap: round;
+  stroke-width: 6;
+}
+
+.wm-star {
+  fill: var(--orange);
+  stroke: var(--plum);
+  stroke-linejoin: round;
+  stroke-width: 1.6;
+}
+
+.hero-tagline {
+  position: relative;
+  z-index: 2;
+  margin-top: 2px;
+  color: var(--cream);
+  font-size: 0.9375rem;
+  font-weight: 600;
+  text-shadow: 0 1px 2px rgba(43, 21, 40, 0.5);
+}
+
+.hero-ground {
+  position: absolute;
+  left: 0;
+  bottom: 0;
+  z-index: 1;
+  width: 100%;
+  height: 30px;
+  fill: var(--bg);
+}
+
+.hero-cactus {
+  position: absolute;
+  left: 6%;
+  bottom: 10px;
+  z-index: 1;
+  width: 28px;
+  height: 46px;
+  color: #1E0E1B;
+}
+
+.hero-sparkle {
+  position: absolute;
+  left: calc(6% + 36px);
+  bottom: 44px;
+  z-index: 1;
+  width: 13px;
+  height: 13px;
+  color: var(--orange);
+}
+
+.hero-sparkle-2 {
+  top: 64px;
+  right: 8%;
+  bottom: auto;
+  left: auto;
+  width: 9px;
+  height: 9px;
+  color: var(--sand);
+  opacity: 0.8;
+}
+
+/* Affiche « WANTED » du gagnant */
+.results-body {
+  padding-top: calc(20px + env(safe-area-inset-top));
+}
+
+.wanted {
+  max-width: 340px;
+  margin: 8px auto 0;
+  padding: 10px;
+  border-radius: 30px;
+  background: linear-gradient(160deg, #EC9443 0%, var(--red) 50%, var(--burgundy) 100%);
+  box-shadow: var(--shadow-lg);
+  transform: rotate(-1.5deg);
+  animation: poster-in 0.55s cubic-bezier(0.2, 1.3, 0.4, 1) both;
+}
+
+.wanted-paper {
+  padding: 20px 20px 18px;
+  border-radius: 34px 26px 38px 24px / 26px 36px 24px 34px;
+  background: radial-gradient(120% 90% at 50% 40%, #F6D3A3 0%, var(--paper) 55%, #E3A86C 100%);
+  color: var(--plum);
+  text-align: center;
+}
+
+.wanted-title {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 10px;
+  font-family: var(--font-display);
+  font-size: 2.75rem;
+  line-height: 1;
+}
+
+.wanted-title .icon {
+  width: 22px;
+  height: 22px;
+}
+
+.wanted-kicker {
+  margin-top: 8px;
+  font-size: 0.75rem;
+  font-weight: 800;
+  letter-spacing: 0.14em;
+  text-transform: uppercase;
+  opacity: 0.75;
+}
+
+.wanted-name {
+  margin: 10px 0 14px;
+  font-family: var(--font-display);
+  font-size: 2.5rem;
+  font-weight: 400;
+  line-height: 1.1;
+  overflow-wrap: anywhere;
+}
+
+.wanted-name.is-long {
+  font-size: 1.75rem;
+}
+
+.wanted-row {
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: 12px;
+  padding-top: 10px;
+  border-top: 2px solid var(--plum);
+  font-weight: 600;
+}
+
+.wanted-row strong {
+  font-size: 1.375rem;
+  font-weight: 800;
+  font-variant-numeric: tabular-nums;
+}
+
+.wanted-text {
+  margin-top: 10px;
+  font-size: 0.875rem;
+  font-weight: 500;
+}
+
+/* Pastilles d'infos (durée, tours…) façon « 2+ joueurs · 15 min » */
+.pill-row {
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: center;
+  gap: 6px;
+  margin-top: 20px;
+}
+
+.pill {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  min-height: 32px;
+  padding: 0 12px;
+  border: 1px solid var(--border);
+  border-radius: 999px;
+  background: var(--surface);
+  color: var(--cream);
+  font-size: 0.8125rem;
+  font-weight: 600;
+}
+
+.pill .icon {
+  width: 1em;
+  height: 1em;
+  color: var(--sand);
+}
+
+@keyframes poster-in {
+  from { opacity: 0; transform: rotate(-8deg) scale(0.7); }
+}
+
+
+/* 13. Souris : survol et barres de défilement =============================== */
 
 @media (hover: hover) {
   .btn-primary:hover:not(:disabled) {
@@ -2246,7 +2483,8 @@ dialog::backdrop {
     filter: brightness(1.1);
   }
 
-  .link-btn:hover {
+  .link-btn:hover,
+  .hero-btn:hover {
     background: var(--accent-soft);
   }
 
@@ -2273,7 +2511,7 @@ dialog {
 }
 
 
-/* 13. Petits écrans, tablettes et ordinateurs =============================== */
+/* 14. Petits écrans, tablettes et ordinateurs =============================== */
 
 @media (max-width: 369px) {
   .hide-narrow {
@@ -2299,15 +2537,29 @@ dialog {
   }
 
   .game-bar .btn-sm {
-    padding: 0 8px;
+    padding: 0 6px;
+    font-size: 0.875rem;
   }
 
   .clock {
     padding-right: 10px;
+    font-size: 1rem;
+  }
+
+  .round-label {
+    font-size: 0.9375rem;
+    letter-spacing: 0;
   }
 
   .screen-footer .btn {
     font-size: 0.9375rem;
+  }
+}
+
+@media (max-width: 419px) {
+  .screen-footer .btn-xl {
+    padding: 0 12px;
+    font-size: 1rem;
   }
 }
 
@@ -2324,6 +2576,7 @@ dialog {
   }
 
   .app {
+    background: var(--bg);
     box-shadow: 0 0 0 1px var(--border), var(--shadow-lg);
   }
 
@@ -2359,10 +2612,6 @@ dialog {
     min-height: 72px;
   }
 
-  .brand-title {
-    font-size: 1.25rem;
-  }
-
   .screen-footer {
     align-items: center;
     padding-top: 16px;
@@ -2376,6 +2625,39 @@ dialog {
 
   .card {
     padding: 20px;
+  }
+
+  /* Bandeau et affiche plus grands */
+  .hero {
+    margin-top: 20px;
+    padding: 18px 28px 64px;
+  }
+
+  .wordmark {
+    width: 440px;
+  }
+
+  .hero-tagline {
+    font-size: 1.0625rem;
+  }
+
+  .hero-cactus {
+    left: 5%;
+    bottom: 12px;
+    width: 46px;
+    height: 76px;
+  }
+
+  .hero-sparkle:not(.hero-sparkle-2) {
+    left: calc(5% + 58px);
+    bottom: 70px;
+    width: 18px;
+    height: 18px;
+  }
+
+  .wanted {
+    max-width: 380px;
+    margin-top: 24px;
   }
 
   /* Configuration sur deux colonnes */
@@ -2420,13 +2702,15 @@ dialog {
   }
 
   .round-label {
-    color: var(--text);
-    font-size: 1.125rem;
+    font-size: 1.375rem;
   }
 
   .round-player {
     color: var(--text-muted);
+    font-family: var(--font);
+    font-size: 1rem;
     font-weight: 600;
+    letter-spacing: 0;
   }
 
   .turn-timer {
@@ -2568,11 +2852,7 @@ dialog {
     min-height: 50px;
   }
 
-  /* Résultats et historique */
-  .results-hero {
-    padding-top: 40px;
-  }
-
+  /* Historique */
   .history-list {
     display: grid;
     grid-template-columns: repeat(auto-fill, minmax(320px, 1fr));
