@@ -337,7 +337,11 @@ kbd {
   min-height: 0;
 }
 
+/* position: relative : les éléments en position absolue (ex. étiquettes
+   réservées aux lecteurs d'écran) restent dans la zone qui défile au lieu
+   d'agrandir la page, ce qui ajoutait une 2e barre de défilement. */
 .screen-body {
+  position: relative;
   flex: 1;
   min-height: 0;
   overflow-y: auto;
@@ -1166,6 +1170,7 @@ kbd {
 }
 
 .game-content {
+  position: relative;
   flex: 1;
   min-height: 0;
   overflow-y: auto;
