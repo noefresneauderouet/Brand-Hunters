@@ -12,7 +12,7 @@ Toutes les données restent dans le navigateur (`localStorage`).
 
 ## Fonctionnalités
 
-- **Configuration** : 2 à 10 joueurs, prénoms obligatoires et uniques. L'ordre de passage est aléatoire (bouton « Mélanger ») ou manuel (glisser-déposer avec la poignée ⠿, ou flèches). Règle de victoire au choix : score le plus haut ou le plus bas. Minuteur par tour en option.
+- **Configuration** : 2 à 10 joueurs, prénoms obligatoires et uniques. L'ordre de passage est aléatoire (bouton « Mélanger ») ou manuel (glisser-déposer avec la poignée ⠿, ou flèches). Règle de victoire au choix : score le plus haut ou le plus bas. Minuteur par tour en option : 30, 45, 50, 60 ou 75 secondes, ou une durée personnalisée de 5 s à 60 min (saisie en secondes, ou au format `1:30`). La durée peut aussi être changée en cours de partie depuis le menu ⋯.
 - **Partie** :
   - joueurs dans l'ordre de passage, avec le joueur actif mis en évidence ;
   - boutons « Joueur suivant » et « Joueur précédent » ;
@@ -89,7 +89,7 @@ Cinq clés, toutes préfixées par `compteurPoints.v1.` (le `v1` permettra de fa
     { "p": "p0", "v": -50, "r": 1, "t": 1795521085000 }
   ],
   "clock":     { "accMs": 120000, "since": 1795521090000 },
-  "turnTimer": { "enabled": true, "durationMs": 60000, "accMs": 0, "since": 1795521090000, "expired": false }
+  "turnTimer": { "enabled": true, "durationMs": 60000, "custom": false, "accMs": 0, "since": 1795521090000, "expired": false }
 }
 ```
 
@@ -114,7 +114,7 @@ Résumé compact, sans le détail des saisies :
   "rounds": 2,
   "winRule": "high",
   "orderMode": "manual",
-  "turnTimer": { "enabled": true, "seconds": 15 },
+  "turnTimer": { "enabled": true, "seconds": 90, "custom": true },
   "players": [
     { "name": "Marc", "slot": 1, "color": "#3e63dd", "score": 300,   "rank": 2 },
     { "name": "Léa",  "slot": 0, "color": "#e5484d", "score": 500,   "rank": 1 },

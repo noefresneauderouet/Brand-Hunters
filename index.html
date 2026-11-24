@@ -113,7 +113,7 @@
               </span>
               <input type="checkbox" class="switch" id="turn-timer-enabled">
             </label>
-            <div class="chips" id="turn-durations" role="radiogroup" aria-label="Durée d’un tour"></div>
+            <div class="timer-picker" id="setup-timer-picker" data-timer-scope="setup"></div>
           </section>
 
           </div>
@@ -332,8 +332,9 @@
       <div class="menu-group">
         <label class="menu-row">
           <span>Minuteur par tour</span>
-          <select class="select" id="menu-turn-timer"></select>
+          <input type="checkbox" class="switch" id="menu-turn-enabled">
         </label>
+        <div class="timer-picker menu-timer-picker" id="menu-timer-picker" data-timer-scope="menu"></div>
         <label class="menu-row">
           <span>Son à la fin du minuteur</span>
           <input type="checkbox" class="switch" id="pref-sound">

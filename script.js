@@ -34,8 +34,11 @@ const MAX_NAME_LENGTH = 20;
 const DEFAULT_QUICK_BUTTONS = Object.freeze([100, 200, 300, 500, -50]);
 const MAX_QUICK_BUTTONS = 12;
 const MAX_POINTS = 1e9;
-const TURN_DURATIONS = Object.freeze([15, 30, 45, 60, 90, 120, 180, 300]); // en secondes
+/** Durées de tour proposées (en secondes) ; toute autre durée est « personnalisée ». */
+const TURN_PRESETS = Object.freeze([30, 45, 50, 60, 75]);
 const DEFAULT_TURN_SECONDS = 60;
+const MIN_TURN_SECONDS = 5;
+const MAX_TURN_SECONDS = 3600;
 const HISTORY_LIMIT = 200;
 /** Si le minuteur a expiré il y a plus longtemps (page fermée), on ne sonne pas. */
 const ALARM_GRACE_MS = 5000;
@@ -172,6 +175,33 @@ function formatSeconds(seconds) {
   return s ? `${m} min ${pad2(s)}` : `${m} min`;
 }
 
+/** Durée de tour valide (nombre entier de secondes, de 5 s à 60 min) ou null. */
+function sanitizeTurnSeconds(value) {
+  const n = Number(value);
+  return Number.isInteger(n) && n >= MIN_TURN_SECONDS && n <= MAX_TURN_SECONDS ? n : null;
+}
+
+/** Lit une durée saisie : « 90 », « 90 s », « 1:30 » ou « 1 min 30 ». Renvoie des secondes ou null. */
+function parseTurnDuration(text) {
+  const value = String(text).trim().toLowerCase().replace(/\s+/g, '');
+  let match = /^(\d{1,4})(s|sec|secondes?)?$/.exec(value);
+  if (match) return sanitizeTurnSeconds(Number(match[1]));
+  match = /^(\d{1,2})(?::|min|m)([0-5]?\d)?s?$/.exec(value);
+  if (match) return sanitizeTurnSeconds(Number(match[1]) * 60 + Number(match[2] || 0));
+  return null;
+}
+
+/** Réglage du minuteur par tour : { enabled, seconds, custom }. */
+function normalizeTurnTimer(raw) {
+  const source = raw && typeof raw === 'object' ? raw : {};
+  const seconds = sanitizeTurnSeconds(source.seconds) ?? DEFAULT_TURN_SECONDS;
+  return {
+    enabled: Boolean(source.enabled),
+    seconds,
+    custom: source.custom === true || !TURN_PRESETS.includes(seconds),
+  };
+}
+
 const dateFormatter = new Intl.DateTimeFormat('fr-FR', {
   weekday: 'long', day: 'numeric', month: 'long', year: 'numeric', hour: '2-digit', minute: '2-digit',
 });
@@ -235,7 +265,7 @@ function defaultSetup() {
     orderMode: 'random',
     order: shuffle(range(4)),
     winRule: 'high',
-    turnTimer: { enabled: false, seconds: DEFAULT_TURN_SECONDS },
+    turnTimer: { enabled: false, seconds: DEFAULT_TURN_SECONDS, custom: false },
   };
 }
 
@@ -255,12 +285,7 @@ function loadSetup() {
     ? saved.order.slice()
     : (setup.orderMode === 'random' ? shuffle(range(setup.count)) : range(setup.count));
   setup.winRule = saved.winRule === 'low' ? 'low' : 'high';
-  setup.turnTimer = {
-    enabled: Boolean(saved.turnTimer && saved.turnTimer.enabled),
-    seconds: TURN_DURATIONS.includes(saved.turnTimer && saved.turnTimer.seconds)
-      ? saved.turnTimer.seconds
-      : DEFAULT_TURN_SECONDS,
-  };
+  setup.turnTimer = normalizeTurnTimer(saved.turnTimer);
   return setup;
 }
 
@@ -364,7 +389,7 @@ function renderSetup() {
   renderOrderList();
   checkRadio('orderMode', s.orderMode);
   checkRadio('winRule', s.winRule);
-  renderTurnTimerSetup();
+  renderTimerPicker('setup');
 }
 
 function checkRadio(name, value) {
@@ -598,16 +623,107 @@ function initOrderDrag() {
   });
 }
 
-function renderTurnTimerSetup() {
-  const { enabled, seconds } = state.setup.turnTimer;
-  $('#turn-timer-enabled').checked = enabled;
-  const box = $('#turn-durations');
-  if (!box.childElementCount) {
-    box.innerHTML = TURN_DURATIONS.map((sec) => `
-      <label class="chip"><input type="radio" name="turnDuration" value="${sec}"><span>${formatSeconds(sec)}</span></label>`).join('');
+/* --- Minuteur par tour : pastilles + durée personnalisée -------------------
+   Le même sélecteur sert sur l'écran de configuration (« setup ») et dans le
+   menu de la partie (« menu »). */
+
+const TIMER_SCOPES = {
+  setup: { picker: '#setup-timer-picker', toggle: '#turn-timer-enabled' },
+  menu: { picker: '#menu-timer-picker', toggle: '#menu-turn-enabled' },
+};
+
+function timerPickerHtml(scope) {
+  const name = `turnDuration-${scope}`;
+  const chips = TURN_PRESETS.map((sec) => `
+      <label class="chip"><input type="radio" name="${name}" value="${sec}"><span>${sec} s</span></label>`).join('');
+  return `
+    <div class="chips" role="radiogroup" aria-label="Durée d’un tour">${chips}
+      <label class="chip"><input type="radio" name="${name}" value="custom"><span>Personnalisé</span></label>
+    </div>
+    <div class="timer-custom" hidden>
+      <label class="visually-hidden" for="${scope}-timer-custom">Durée personnalisée d’un tour, en secondes</label>
+      <div class="timer-custom-row">
+        <input class="input timer-custom-input" id="${scope}-timer-custom" type="text" inputmode="numeric"
+          enterkeyhint="done" autocomplete="off" maxlength="8" placeholder="90" aria-describedby="${scope}-timer-help">
+        <span class="timer-custom-unit">secondes</span>
+      </div>
+      <p class="timer-custom-help" id="${scope}-timer-help"></p>
+    </div>`;
+}
+
+function getTimerConfig(scope) {
+  if (scope === 'menu') {
+    const timer = state.game.turnTimer;
+    return normalizeTurnTimer({ ...timer, seconds: Math.round(timer.durationMs / 1000) });
   }
-  checkRadio('turnDuration', seconds);
-  box.classList.toggle('is-off', !enabled);
+  return state.setup.turnTimer;
+}
+
+function renderTimerPicker(scope) {
+  const { picker, toggle } = TIMER_SCOPES[scope];
+  const box = $(picker);
+  if (!box || (scope === 'menu' && !state.game)) return;
+  if (!box.childElementCount) box.innerHTML = timerPickerHtml(scope);
+
+  const config = getTimerConfig(scope);
+  $(toggle).checked = config.enabled;
+  $$('input[type="radio"]', box).forEach((input) => {
+    input.checked = config.custom ? input.value === 'custom' : Number(input.value) === config.seconds;
+  });
+  $('.timer-custom', box).hidden = !config.custom;
+  const field = $('.timer-custom-input', box);
+  if (document.activeElement !== field) field.value = String(config.seconds); // pas pendant la saisie
+  updateTimerHelp(field);
+  box.classList.toggle('is-off', !config.enabled);
+}
+
+/** Met à jour l'aide sous la durée personnalisée ; renvoie la durée lue (ou null). */
+function updateTimerHelp(field) {
+  const help = $('.timer-custom-help', field.closest('.timer-custom'));
+  const raw = field.value.trim();
+  const seconds = parseTurnDuration(raw);
+  const invalid = seconds === null && raw !== '';
+  field.setAttribute('aria-invalid', String(invalid));
+  help.classList.toggle('is-error', invalid);
+  if (invalid) help.textContent = 'Saisissez une durée entre 5 secondes et 60 minutes (ex. : 90 ou 1:30).';
+  else if (seconds === null) help.textContent = 'Entre 5 secondes et 60 minutes.';
+  else help.textContent = seconds >= 60 ? `Soit ${formatSeconds(seconds)} par tour.` : `${seconds} secondes par tour.`;
+  return seconds;
+}
+
+function applyTimerConfig(scope, changes) {
+  const config = normalizeTurnTimer({ ...getTimerConfig(scope), ...changes });
+  if (scope === 'menu') {
+    setGameTurnTimer(config);
+  } else {
+    state.setup.turnTimer = config;
+    saveSetup();
+  }
+  renderTimerPicker(scope);
+}
+
+function onTimerPresetChange(input) {
+  const scope = input.closest('[data-timer-scope]').dataset.timerScope;
+  if (input.value === 'custom') {
+    applyTimerConfig(scope, { enabled: true, custom: true });
+    const field = $(`${TIMER_SCOPES[scope].picker} .timer-custom-input`);
+    field.focus();
+    field.select();
+  } else {
+    applyTimerConfig(scope, { enabled: true, seconds: Number(input.value), custom: false });
+  }
+}
+
+/**
+ * Durée personnalisée : appliquée pendant la frappe sur la configuration,
+ * mais seulement à la validation (Entrée / sortie du champ) en cours de partie,
+ * pour ne pas relancer le minuteur à chaque chiffre tapé.
+ */
+function onTimerCustomInput(field, committed) {
+  const scope = field.closest('[data-timer-scope]').dataset.timerScope;
+  const seconds = updateTimerHelp(field);
+  if (seconds === null) return;
+  if (scope === 'setup' || committed) applyTimerConfig(scope, { enabled: true, seconds, custom: true });
 }
 
 /** Pré-remplit la configuration avec les joueurs et réglages d'une partie. */
@@ -627,10 +743,7 @@ function prefillSetup({ players, winRule, orderMode, turnTimer }) {
     orderMode: manual ? 'manual' : 'random',
     order: manual ? slots : shuffle(range(count)),
     winRule: winRule === 'low' ? 'low' : 'high',
-    turnTimer: {
-      enabled: Boolean(turnTimer && turnTimer.enabled),
-      seconds: turnTimer && TURN_DURATIONS.includes(turnTimer.seconds) ? turnTimer.seconds : DEFAULT_TURN_SECONDS,
-    },
+    turnTimer: normalizeTurnTimer(turnTimer),
   };
   state.showSetupErrors = false;
   saveSetup();
@@ -649,6 +762,16 @@ function startGame() {
   }
 
   const s = state.setup;
+  if (s.turnTimer.enabled && s.turnTimer.custom) {
+    const field = $('#setup-timer-picker .timer-custom-input');
+    if (updateTimerHelp(field) === null) {
+      field.focus();
+      field.scrollIntoView({ block: 'center', behavior: prefersReducedMotion() ? 'auto' : 'smooth' });
+      showToast('Vérifiez la durée du minuteur.');
+      return;
+    }
+  }
+
   const now = Date.now();
   state.game = {
     version: 1,
@@ -670,6 +793,7 @@ function startGame() {
     turnTimer: {
       enabled: s.turnTimer.enabled,
       durationMs: s.turnTimer.seconds * 1000,
+      custom: s.turnTimer.custom,
       accMs: 0,
       since: now,
       expired: false,
@@ -1473,32 +1597,28 @@ function saveQuickDialog() {
 function openMenu() {
   const g = state.game;
   if (!g) return;
-  const select = $('#menu-turn-timer');
-  if (!select.options.length) {
-    select.innerHTML = '<option value="0">Désactivé</option>'
-      + TURN_DURATIONS.map((sec) => `<option value="${sec}">${formatSeconds(sec)}</option>`).join('');
-  }
-  const seconds = Math.round(g.turnTimer.durationMs / 1000);
-  select.value = g.turnTimer.enabled && TURN_DURATIONS.includes(seconds) ? String(seconds) : '0';
+  renderTimerPicker('menu');
   $('#pref-sound').checked = state.prefs.sound;
   $('#wake-status').textContent = getWakeLockStatus();
   openDialog($('#menu-dialog'));
 }
 
-function setGameTurnTimer(seconds) {
+/** Change le minuteur en cours de partie (il repart de zéro si la durée change). */
+function setGameTurnTimer({ enabled, seconds, custom }) {
   const g = state.game;
   if (!g) return;
-  if (seconds > 0) {
-    g.turnTimer.enabled = true;
-    g.turnTimer.durationMs = seconds * 1000;
-    resetTurnTimer(g);
-    state.setup.turnTimer = { enabled: true, seconds };
-  } else {
-    g.turnTimer.enabled = false;
-    g.turnTimer.expired = false;
-    state.setup.turnTimer.enabled = false;
+  const timer = g.turnTimer;
+  const durationMs = seconds * 1000;
+  const changed = enabled !== timer.enabled || durationMs !== timer.durationMs;
+  timer.enabled = enabled;
+  timer.durationMs = durationMs;
+  timer.custom = custom;
+  if (changed) {
+    if (enabled) resetTurnTimer(g);
+    else timer.expired = false;
   }
-  saveSetup(); // ce choix est aussi gardé pour la prochaine partie
+  state.setup.turnTimer = normalizeTurnTimer({ enabled, seconds, custom }); // gardé pour la prochaine partie
+  saveSetup();
   saveGame();
   renderGame();
 }
@@ -1533,6 +1653,7 @@ function buildResult(game, now = Date.now()) {
     turnTimer: {
       enabled: Boolean(game.turnTimer.enabled),
       seconds: Math.round(game.turnTimer.durationMs / 1000),
+      custom: Boolean(game.turnTimer.custom),
     },
     players: game.players.map((p) => ({
       name: p.name,
@@ -1837,6 +1958,7 @@ function onInput(event) {
   if (target.matches('[data-name-index]')) onNameInput(target);
   else if (target.id === 'custom-value') onCustomInput(target);
   else if (target.closest('.quick-edit-row')) onQuickRowInput(target);
+  else if (target.matches('.timer-custom-input')) onTimerCustomInput(target, false);
 }
 
 function onChange(event) {
@@ -1846,15 +1968,13 @@ function onChange(event) {
     state.setup.winRule = target.value === 'low' ? 'low' : 'high';
     saveSetup();
   } else if (target.id === 'turn-timer-enabled') {
-    state.setup.turnTimer.enabled = target.checked;
-    saveSetup();
-    renderTurnTimerSetup();
-  } else if (target.name === 'turnDuration') {
-    state.setup.turnTimer = { enabled: true, seconds: Number(target.value) };
-    saveSetup();
-    renderTurnTimerSetup();
-  } else if (target.id === 'menu-turn-timer') {
-    setGameTurnTimer(Number(target.value));
+    applyTimerConfig('setup', { enabled: target.checked });
+  } else if (target.id === 'menu-turn-enabled') {
+    applyTimerConfig('menu', { enabled: target.checked });
+  } else if (target.name && target.name.startsWith('turnDuration-')) {
+    onTimerPresetChange(target);
+  } else if (target.matches('.timer-custom-input')) {
+    onTimerCustomInput(target, true);
   } else if (target.id === 'pref-sound') {
     setSoundPref(target.checked);
   }
@@ -1867,6 +1987,13 @@ function onKeydown(event) {
   if (event.key === 'Enter' && (event.ctrlKey || event.metaKey) && state.screen === 'setup' && !$('dialog[open]')) {
     event.preventDefault();
     startGame();
+    return;
+  }
+
+  // Entrée dans la durée personnalisée : valide la durée sans lancer la partie.
+  if (event.key === 'Enter' && target.matches('.timer-custom-input')) {
+    event.preventDefault();
+    target.blur();
     return;
   }
 

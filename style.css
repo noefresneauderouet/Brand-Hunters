@@ -933,8 +933,45 @@ kbd {
   transition: opacity 0.2s ease;
 }
 
-.chips.is-off {
+.timer-picker {
+  transition: opacity 0.2s ease;
+}
+
+.timer-picker.is-off {
   opacity: 0.5;
+}
+
+.timer-custom {
+  margin-top: 12px;
+}
+
+.timer-custom-row {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+}
+
+.timer-custom-input {
+  width: 7.5em;
+  font-weight: 800;
+  text-align: center;
+  font-variant-numeric: tabular-nums;
+}
+
+.timer-custom-unit {
+  color: var(--text-muted);
+  font-weight: 700;
+}
+
+.timer-custom-help {
+  margin-top: 6px;
+  color: var(--text-muted);
+  font-size: 0.875rem;
+}
+
+.timer-custom-help.is-error {
+  color: var(--minus-text);
+  font-weight: 600;
 }
 
 .chip {
@@ -2036,13 +2073,17 @@ dialog::backdrop {
   border-top: 1px solid var(--border);
 }
 
-.select {
-  min-height: 44px;
-  padding: 0 12px;
-  border: 1px solid var(--border-strong);
-  border-radius: 12px;
-  background: var(--surface);
-  font-weight: 700;
+
+.menu-timer-picker {
+  padding: 0 0 14px;
+}
+
+.menu-timer-picker .chips {
+  margin-top: 0;
+}
+
+.menu-timer-picker + .menu-row {
+  border-top: 1px solid var(--border);
 }
 
 .menu-note {
