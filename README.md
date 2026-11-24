@@ -1,188 +1,204 @@
-# Brand Hunters · Compteur de points
+# Brand Hunters · Scorekeeper
 
-Site web pour compter les points pendant une partie de jeu de société, **sur téléphone comme sur ordinateur**.
+Site web pour compter les points pendant une partie de **Brand Hunters**, **sur téléphone comme sur ordinateur**.
 HTML, CSS et JavaScript natifs : aucun framework, aucune bibliothèque, aucune étape de build.
 Toutes les données restent dans le navigateur (`localStorage`).
 
+L'interface est **en anglais**, comme le jeu et les maquettes. Cette documentation reste en français.
+
 | Fichier | Rôle |
 | --- | --- |
-| `index.html` | Structure des 4 écrans (configuration, partie, résultats, historique) et des fenêtres de dialogue |
-| `style.css` | Mise en page téléphone, tablette et ordinateur, aux couleurs de Brand Hunters |
-| `script.js` | Logique : joueurs, scores, tours, chronomètre, minuteur, sauvegarde, historique |
-| `fonts/` | Polices Rye et Poppins hébergées avec le site, avec leurs licences |
-| `logo-brand-hunters.svg` | Logo officiel (version sable pour fond sombre) |
+| `index.html` | Structure des 5 pages (New game, The hunt, résultats, History, Rules) et des fenêtres de dialogue |
+| `style.css` | Mise en page téléphone, tablette et ordinateur, d'après les maquettes |
+| `script.js` | Logique : chasseurs, primes, tours, chronomètre, sauvegarde, historique, raccourcis clavier |
+| `logo-brand-hunters.svg` | Logo officiel |
+| `fonts/` | Polices Bitter et Rye hébergées avec le site, avec leurs licences |
+
+> Les fichiers `fonts/poppins-latin-*.woff2` et `fonts/LICENCE-Poppins.txt` viennent de la version précédente. Ils ne servent plus et peuvent être supprimés.
+
+## Les pages
+
+Chaque page a sa propre adresse, ce qui fait aussi fonctionner le bouton « retour » du navigateur. On peut donc partager un lien direct, par exemple vers les règles.
+
+| Adresse | Page |
+| --- | --- |
+| `#/new` | **New game** : configuration de la partie |
+| `#/hunt` | **The hunt** : la partie en cours (visible seulement s'il y en a une) |
+| `#/results` | Affiche **WANTED** du gagnant et classement final |
+| `#/history` | **History** : parties terminées |
+| `#/rules` | **Rules** : vidéo des règles et raccourcis clavier |
+
+À l'ouverture du site, une partie en cours est reprise automatiquement. Sinon, la page New game s'affiche.
 
 ## Fonctionnalités
 
-- **Configuration** : 2 à 10 joueurs, prénoms obligatoires et uniques. L'ordre de passage est aléatoire (bouton « Mélanger ») ou manuel (glisser-déposer avec la poignée ⠿, ou flèches). Règle de victoire au choix : score le plus haut ou le plus bas. Minuteur par tour en option : 30, 45, 50, 60 ou 75 secondes, ou une durée personnalisée de 5 s à 60 min (saisie en secondes, ou au format `1:30`). La durée peut aussi être changée en cours de partie depuis le menu ⋯.
-- **Partie** :
-  - joueurs dans l'ordre de passage, avec le joueur actif mis en évidence ;
-  - boutons « Joueur suivant » et « Joueur précédent » ;
-  - boutons rapides verts (+) et rouges (−), saisie libre de n'importe quel nombre et bouton « Annuler » ;
-  - onglets « Classement » (en direct) et « Tour par tour » (feuille de score) ;
-  - touchez un autre joueur pour lui donner des points hors de son tour ;
-  - **pénalités seulement si la réponse est trouvée** (règle Brand Hunters, activée par défaut, modifiable dans la configuration et le menu ⋯). Voir ci-dessous.
+- **New game**
+  - **Joueurs :** de 2 à 10 chasseurs, chacun avec une étoile de couleur. Les noms sont obligatoires et doivent être différents. Une icône corbeille retire un chasseur.
+  - **Ordre de passage :** c'est l'ordre de la liste. « Shuffle » fait un tirage au sort, à refaire autant de fois qu'on veut. Pour un ordre manuel, on glisse les poignées ⠿ (ou flèches ↑ ↓ au clavier).
+  - **Round timer :** les flèches proposent Off, 30, 45, 50, 60 ou 75 s. On peut aussi taper n'importe quelle durée de 5 s à 60 min (`90`, `1:30`…).
+  - **Bounty :** les primes Easy, Medium, Difficult et Most Wanted, plus Bonus et Wrong answer. « Edit » permet de changer les valeurs ; elles sont gardées pour les parties suivantes, avec un bouton « Reset to defaults ».
+  - **House rules :** règle de victoire (score le plus haut ou le plus bas) et règle des mauvaises réponses (voir plus bas).
+- **The hunt**
+  - **Current hunter :** le chasseur dont c'est le tour, avec ‹ › pour passer au précédent ou au suivant.
+  - **Chronomètre circulaire :** il affiche le temps restant du tour, avec boutons pour relancer, mettre en pause et couper le son. Sous le temps, la durée totale de la partie (« Hunt 12:34 »). Si le minuteur est désactivé, le cercle affiche cette durée totale.
+  - **Add points :** les 4 tuiles de primes, ainsi que **Bonus**, **Wrong**, **Custom** (n'importe quel nombre, positif ou négatif) et **Undo**.
+  - **Hunters :** trois onglets, « Turn order » (scores dans l'ordre de passage), « Ranking » (classement en direct) et « Rounds » (points tour par tour). Toucher un chasseur lui donne des points hors de son tour.
+  - **Next hunter :** sur téléphone, ce bouton reste toujours accessible en bas de l'écran.
+  - **Settings :** changer le minuteur, les règles, le son et les primes, ou abandonner la partie.
+  - **End game :** affiche le classement final et enregistre la partie dans l'historique.
+- **Fin du minuteur :** signal visuel, son et vibration (si le téléphone le permet). L'écran reste allumé pendant la partie (Wake Lock API).
+- **Sauvegarde :** automatique à chaque action ; on retrouve la partie après une fermeture ou un rechargement.
+- **History :** parties terminées. Chacune peut être supprimée ou rejouée (« Play again » pré-remplit New game avec les mêmes chasseurs et réglages).
 
-### Pénalités : seulement si la réponse est trouvée
+### Mauvaises réponses : elles ne comptent que si le chasseur trouve
 
-Dans Brand Hunters, chaque mauvaise réponse coûte −50, mais seulement si le joueur finit par trouver la marque.
+Dans Brand Hunters, chaque mauvaise réponse coûte −50, mais seulement si le chasseur finit par trouver la marque. Cette règle est activée par défaut et peut être désactivée dans New game (House rules) ou dans Settings.
 
-- **Pendant le tour :** les points négatifs d'un joueur restent **en attente**. Ils sont affichés sur sa carte (« −100 en attente ») sans toucher à son total.
-- **Il trouve :** dès qu'on lui donne des points positifs dans le même tour, les pénalités sont appliquées (+200 avec deux −50 donnent +100 au total).
-- **Il ne trouve pas :** au « Joueur suivant », ses pénalités sont **annulées**. Un message le signale, et elles apparaissent barrées dans « Tour par tour ».
-- **Retour en arrière :** « Joueur précédent » remet les pénalités en attente, et « Annuler » fonctionne normalement.
-- **Fin de partie :** « Terminer la partie » annule les pénalités encore en attente, et la confirmation l'indique.
-- **Boutons rapides personnalisables** (bouton « Boutons » ou menu ⋯) : modifier, ajouter (12 max) ou supprimer des boutons, et revenir aux valeurs par défaut. Les réglages sont gardés pour les parties suivantes.
-- **Timer** :
-  - chronomètre de partie avec pause et reprise (touchez le chrono) ;
-  - minuteur par tour, relancé à chaque « Joueur suivant ». À la fin du temps : signal visuel, son et vibration si le téléphone le permet ;
-  - l'écran reste allumé pendant la partie (Wake Lock API).
-- **Sauvegarde** :
-  - sauvegarde automatique à chaque action ;
-  - « Terminer la partie » affiche le classement final et l'enregistre dans l'historique ;
-  - l'historique permet de supprimer une partie ;
-  - « Rejouer avec les mêmes joueurs » ouvre la configuration pré-remplie : il ne reste qu'à toucher « Commencer ». En ordre aléatoire, un nouveau tirage est fait.
+- **Pendant le tour :** les points négatifs restent **en attente** (« −100 pending »), sans toucher au total.
+- **Il trouve :** dès qu'il marque des points positifs dans le même tour (une prime, le bonus ou des points Custom), les pénalités sont appliquées.
+- **Il ne trouve pas :** au « Next hunter », elles sont **annulées**. Un message le signale, et elles apparaissent barrées dans « Rounds ».
+- **Retour en arrière :** ‹ (chasseur précédent) remet les pénalités en attente ; « Undo » fonctionne normalement.
+- **Fin de partie :** « End game » annule les pénalités encore en attente, et la confirmation l'indique.
+
+### Vidéo des règles
+
+La page Rules affiche « Rules video coming soon » tant qu'aucune vidéo n'est renseignée. Quand la vidéo est prête, ouvrez `script.js` et remplissez la constante en haut du fichier :
+
+```js
+const RULES_VIDEO_URL = 'https://youtu.be/XXXXXXXXXXX'; // lien YouTube
+// ou
+const RULES_VIDEO_URL = 'rules.mp4';                    // fichier vidéo placé à côté d'index.html
+```
+
+Une vidéo YouTube est intégrée en mode « confidentialité renforcée » (`youtube-nocookie.com`).
 
 ## Direction artistique
 
-L'interface reprend l'univers du jeu physique Brand Hunters.
+L'interface suit les maquettes Brand Hunters :
+- décor de coucher de soleil sur le désert (soleil, mesas, cactus) ;
+- titres en italique très gras, soulignés d'une étoile de shérif ;
+- cartes sombres à bord rose et tuiles de primes colorées ;
+- grand bouton orangé pour l'action principale ;
+- en fin de partie, le gagnant apparaît sur une **affiche WANTED**, avec son score comme « prime ».
 
-**Palette**
+**Couleurs.** Elles sont réunies dans des variables en haut de `style.css`. Le rouge (`#D14B35`), l'orange (`#F18930`) et le sable (`#F8C787`) sont les codes exacts du logo. Les autres couleurs ont été relevées sur les maquettes :
 
-Les couleurs sont des variables en haut de `style.css`. Le rouge, l'orange et le sable sont les codes exacts du logo. La prune, le bordeaux et l'olive ont été relevés sur les visuels du jeu : ajustez-les si la charte donne d'autres codes.
+| Variable | Usage |
+| --- | --- |
+| `--plum` `#2B1528` | Fond, texte sur les boutons orange |
+| `--easy-1` / `--easy-2` | Tuile Easy (vert) |
+| `--medium-1` / `--medium-2` | Tuile Medium (orange) |
+| `--difficult-1` / `--difficult-2` | Tuile Difficult (rouge) |
+| `--wanted-1` / `--wanted-2` | Tuile Most Wanted (violet) |
 
-| Variable | Couleur | Usage |
-| --- | --- | --- |
-| `--plum` | `#2B1528` | Fond, texte sur les boutons orange |
-| `--burgundy` | `#4C1A38` | Surfaces secondaires |
-| `--red` | `#D14B35` | Boutons « retirer », alertes, 3e place |
-| `--orange` | `#F18930` | Bouton principal, joueur dont c'est le tour, 2e place |
-| `--olive` | `#96813A` | Boutons « ajouter » (un peu assombri, `#857230`, pour la lisibilité) |
-| `--sand` | `#F8C787` | Titres, onglet sélectionné, 1re place |
+**Typographies.** Elles sont hébergées dans `fonts/` (licence SIL OFL, fichiers de licence inclus). Aucun appel n'est fait à Google Fonts : rien n'est transmis à un service tiers (RGPD), et les polices fonctionnent hors ligne.
+- **Bitter** : toute l'interface, en italique très gras (900) pour les titres.
+- **Rye** : l'affiche WANTED.
 
-**Typographies**
-
-- **Rye** : titres « western », logo, affiche WANTED.
-- **Poppins** : textes.
-
-Elles sont hébergées dans `fonts/` (licence SIL OFL, fichiers de licence inclus). Aucun appel n'est fait à Google Fonts : rien n'est transmis à un service tiers (RGPD), et les polices fonctionnent hors ligne.
-
-**Logo**
-
-Le logo officiel (`logo-brand-hunters.svg`) s'affiche dans le bandeau d'accueil. Pour le changer, remplacez simplement ce fichier en gardant le même nom.
-
-**Ambiance**
-
-- Bandeau en dégradé coucher de soleil, avec dune, cactus et étincelles.
-- Étoile de shérif pour le joueur dont c'est le tour.
-- En fin de partie, le gagnant apparaît sur une **affiche WANTED**, avec son score comme « prime ».
-- Un seul thème, sombre, aux couleurs de la marque.
+**Logo.** `logo-brand-hunters.svg` s'affiche en haut à gauche. Pour le changer, remplacez ce fichier en gardant le même nom.
 
 ## Sur ordinateur
 
-L'interface s'adapte automatiquement à partir de 900 px de large (ordinateur, tablette à l'horizontale) :
+À partir de 900 px de large, la navigation affiche ses libellés et New game passe sur deux colonnes. À partir de 1080 px, The hunt passe sur trois colonnes : chasseurs à gauche, chronomètre au centre, primes à droite.
 
-- la configuration s'affiche sur deux colonnes ;
-- pendant la partie, les joueurs apparaissent en grille à gauche. À droite, un panneau garde toujours visibles le **classement** et la **saisie des points** ;
-- les fenêtres s'ouvrent au centre de l'écran, et les boutons réagissent au survol de la souris ;
-- avec une souris et un clavier, chaque bouton indique son raccourci (ces indications sont masquées sur écran tactile).
+Avec une souris et un clavier, chaque bouton indique son raccourci. Ces indications sont masquées sur écran tactile.
 
-### Raccourcis clavier (écran de partie)
+### Raccourcis clavier (page The hunt)
 
 | Touche | Action |
 | --- | --- |
-| `Espace` ou `→` | Joueur suivant |
-| `←` | Joueur précédent |
-| `1` à `9`, `0` | Boutons rapides, dans l'ordre |
-| `S`, `+` ou `−` | Saisir une autre valeur |
+| `Espace` ou `→` | Chasseur suivant |
+| `←` | Chasseur précédent |
+| `1` `2` `3` `4` | Easy, Medium, Difficult, Most Wanted |
+| `B` | Bonus |
+| `X` ou `−` | Mauvaise réponse |
+| `S` ou `+` | Points libres (Custom) |
 | Pavé numérique | Taper directement un nombre, puis `Entrée` |
-| `↑` `↓` | Choisir le joueur qui reçoit les points |
+| `↑` `↓` | Choisir qui reçoit les points |
 | `Ctrl+Z` (`⌘Z` sur Mac) ou `Retour arrière` | Annuler la dernière saisie |
-| `P` | Pause / reprise du chronomètre |
-| `?` | Afficher l'aide des raccourcis |
+| `P` · `R` · `M` | Pause · relancer le minuteur · son |
+| `?` | Afficher les raccourcis |
 | `Échap` | Fermer une fenêtre |
 
-Sur l'écran de configuration, `Ctrl+Entrée` lance la partie. Les chiffres fonctionnent aussi en AZERTY sans appuyer sur `Maj`.
+Sur New game, `Ctrl+Entrée` lance la partie. Les chiffres fonctionnent aussi en AZERTY sans appuyer sur `Maj`.
 
 ## Organisation des données dans `localStorage`
 
-Cinq clés, toutes préfixées par `compteurPoints.v1.` (le `v1` permettra de faire évoluer le format plus tard) :
+Les clés gardent les noms des versions précédentes : les parties en cours et l'historique déjà enregistrés sont repris tels quels.
 
 | Clé | Contenu |
 | --- | --- |
 | `compteurPoints.v1.partieEnCours` | La partie en cours (absente s'il n'y en a pas) |
 | `compteurPoints.v1.historique` | Les parties terminées, de la plus récente à la plus ancienne (200 max) |
-| `compteurPoints.v1.boutonsRapides` | Les valeurs des boutons rapides, ex. `[100, 200, 300, 500, -50]` |
-| `compteurPoints.v1.configuration` | Le dernier formulaire de configuration (prénoms, ordre, règle, minuteur) |
-| `compteurPoints.v1.preferences` | Préférences, ex. `{ "sound": true }` |
+| `compteurPoints.v1.configuration` | Le formulaire New game : chasseurs (nom et couleur, dans l'ordre de passage), règles, minuteur |
+| `compteurPoints.v1.primes` | Les valeurs des primes : `{ "easy": 100, "medium": 200, "difficult": 300, "wanted": 400, "bonus": 50, "penalty": 50 }` |
+| `compteurPoints.v1.preferences` | Préférences : `{ "sound": true }` |
+
+`compteurPoints.v1.boutonsRapides`, la clé des anciens boutons rapides, n'est plus utilisée.
 
 ### La partie en cours
 
 ```json
 {
-  "version": 1,
+  "version": 2,
   "id": "mwumvyiep3r1gy",
   "startedAt": 1795521072758,
   "winRule": "high",
   "conditionalPenalties": true,
-  "orderMode": "manual",
   "players": [
-    { "id": "p1", "slot": 1, "name": "Marc", "color": "#3e63dd" },
-    { "id": "p0", "slot": 0, "name": "Léa",  "color": "#e5484d" }
+    { "id": "p0", "name": "Ana", "color": "#78B13A" },
+    { "id": "p1", "name": "Ben", "color": "#F18930" }
   ],
   "current": 0,
   "target": 0,
   "round": 2,
   "entries": [
-    { "p": "p1", "v": 200, "r": 1, "k": 0, "t": 1795521080000 },
-    { "p": "p0", "v": -50, "r": 1, "k": 1, "t": 1795521085000 }
+    { "p": "p0", "v": 200, "r": 1, "k": 0, "c": "medium",  "t": 1795521080000 },
+    { "p": "p1", "v": -50, "r": 1, "k": 1, "c": "penalty", "t": 1795521085000 }
   ],
   "clock":     { "accMs": 120000, "since": 1795521090000 },
   "turnTimer": { "enabled": true, "durationMs": 60000, "custom": false, "accMs": 0, "since": 1795521090000, "expired": false }
 }
 ```
 
-- `players` est rangé **dans l'ordre de passage**. `slot` est la place du joueur dans le formulaire (elle fixe sa couleur).
-- `current` désigne le joueur dont c'est le tour. `target` désigne celui qui reçoit les points (en général le même). `round` est le numéro du tour.
-- **Les scores ne sont pas stockés, ils sont recalculés** à partir de `entries`, le journal de toutes les saisies. Chaque saisie contient :
-  - `p` : le joueur ;
+- **`players`** est rangé **dans l'ordre de passage**.
+- **`current`, `target`, `round` :** `current` désigne le chasseur dont c'est le tour, `target` celui qui reçoit les points (en général le même), `round` le numéro du tour.
+- **Les scores ne sont pas stockés, ils sont recalculés** à partir de `entries`, le journal de toutes les saisies :
+  - `p` : le chasseur ;
   - `v` : les points ;
-  - `r` : le tour (chaque joueur a joué une fois) ;
-  - `k` : le tour de jeu, c'est-à-dire le passage d'un joueur, numéroté depuis le début de la partie ;
+  - `r` : le tour (chaque chasseur a joué une fois) ;
+  - `k` : le passage d'un chasseur, numéroté depuis le début de la partie ;
+  - `c` : le type de saisie (`easy`, `medium`, `difficult`, `wanted`, `bonus`, `penalty` ou `custom`) ;
   - `t` : l'horodatage.
-
-  Ce journal suffit à tout :
-  - total d'un joueur = somme de ses saisies qui comptent. Avec `conditionalPenalties`, un point négatif ne compte que si le même joueur a aussi des points positifs avec le même `k`. Sinon il est « en attente » (tour en cours) ou « annulé » (tour terminé). Cet état est recalculé à chaque fois, rien n'est effacé ;
-  - « Annuler » = retirer la dernière saisie ;
-  - feuille « Tour par tour » = saisies regroupées par tour.
-- **Les temps sont des horodatages**, pas des compteurs : `accMs` est le temps déjà cumulé et `since` le début de la période en cours (`null` = en pause). Le chronomètre reste donc juste après un rechargement de la page ou une mise en veille du téléphone.
+- **Ce journal suffit à tout :**
+  - total = somme des saisies qui comptent. Avec `conditionalPenalties`, un point négatif ne compte que si le même chasseur a aussi des points positifs avec le même `k` ; sinon il est « en attente » (tour en cours) ou « annulé » (tour terminé). Cet état est recalculé à chaque fois, rien n'est effacé ;
+  - Undo = retirer la dernière saisie ;
+  - onglet Rounds = saisies regroupées par tour.
+- **Les temps sont des horodatages**, pas des compteurs : `accMs` est le temps déjà cumulé et `since` le début de la période en cours (`null` = en pause). Le chronomètre reste donc juste après un rechargement ou une mise en veille du téléphone.
 
 ### Une partie de l'historique
 
-Résumé compact, sans le détail des saisies :
+C'est un résumé compact, sans le détail des saisies :
 
 ```json
 {
   "id": "mwumvyiep3r1gy",
   "startedAt": 1795521072758,
-  "endedAt": 1795521093766,
-  "durationMs": 17431,
-  "rounds": 2,
+  "endedAt": 1795521693766,
+  "durationMs": 621008,
+  "rounds": 5,
   "winRule": "high",
   "conditionalPenalties": true,
-  "orderMode": "manual",
-  "turnTimer": { "enabled": true, "seconds": 90, "custom": true },
+  "turnTimer": { "enabled": true, "seconds": 60 },
   "players": [
-    { "name": "Marc", "slot": 1, "color": "#3e63dd", "score": 300,   "rank": 2 },
-    { "name": "Léa",  "slot": 0, "color": "#e5484d", "score": 500,   "rank": 1 },
-    { "name": "Zoé",  "slot": 2, "color": "#30a46c", "score": -85.5, "rank": 3 }
+    { "name": "Ana", "color": "#78B13A", "score": 850, "rank": 1 },
+    { "name": "Ben", "color": "#F18930", "score": 600, "rank": 2 }
   ],
-  "winners": ["Léa"]
+  "winners": ["Ana"]
 }
 ```
 
-En cas d'égalité, plusieurs joueurs ont le rang 1 et `winners` contient tous leurs prénoms.
-À la lecture, les données sont vérifiées : des données abîmées sont ignorées au lieu de bloquer le site.
+En cas d'égalité, plusieurs chasseurs ont le rang 1 et `winners` contient tous leurs noms. À la lecture, les données sont vérifiées : des données abîmées sont ignorées au lieu de bloquer le site.
 
 > Les données sont propres à **un navigateur, sur un appareil, pour une adresse de site**.
 > La version locale et la version en ligne ont donc chacune leurs propres données.
@@ -192,7 +208,7 @@ En cas d'égalité, plusieurs joueurs ont le rang 1 et `winners` contient tous l
 
 ### Sur ordinateur
 
-Double-cliquez sur `index.html` : le site s'ouvre et fonctionne directement, avec l'interface ordinateur.
+Double-cliquez sur `index.html` : le site s'ouvre et fonctionne directement.
 Pour voir la version téléphone dans Chrome ou Edge : touche F12, puis l'icône téléphone (ou Ctrl+Maj+M).
 
 ### Sur téléphone, en local (même réseau Wi-Fi)
@@ -210,9 +226,9 @@ Dans ce mode, tout fonctionne **sauf le maintien de l'écran allumé**, car le W
 
 ### Points à vérifier sur téléphone
 
-- Le **son** du minuteur. Sur iPhone, il est coupé si le bouton latéral est en mode silencieux.
-- La **vibration** : elle fonctionne sur Android, mais Safari sur iPhone ne la permet pas.
-- L'**écran qui reste allumé** pendant la partie (iOS 16.4 ou plus récent, Chrome Android).
+- **Le son** du minuteur : sur iPhone, il est coupé si le bouton latéral est en mode silencieux.
+- **La vibration** : elle fonctionne sur Android, mais Safari sur iPhone ne la permet pas.
+- **L'écran qui reste allumé** pendant la partie : iOS 16.4 ou plus récent, Chrome Android.
 - **Fermer puis rouvrir** la page en pleine partie : vous la retrouvez telle quelle.
 - **Ajouter à l'écran d'accueil**, pour l'ouvrir comme une application : menu Partager > « Sur l'écran d'accueil » sur iPhone, menu ⋮ > « Ajouter à l'écran d'accueil » sur Android.
 

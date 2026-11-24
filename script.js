@@ -1,67 +1,97 @@
 'use strict';
 
 /* =============================================================================
-   Compteur de points — logique de l'application
+   Brand Hunters · Scorekeeper
    -----------------------------------------------------------------------------
-   • JavaScript natif : aucun framework, aucune bibliothèque, aucune compilation.
-   • Toutes les données restent dans le navigateur (localStorage).
+   • Plain JavaScript: no framework, no library, no build step.
+   • Everything is stored in the browser (localStorage).
 
-   Sommaire
-     1. Constantes                     6. Écran « Partie »
-     2. Utilitaires                    7. Chronomètre, minuteur, alarme, Wake Lock
-     3. Stockage (localStorage)        8. Dialogues
-     4. État de l'application          9. Fin de partie, résultats, historique
-     5. Écran « Configuration »       10. Navigation, événements, démarrage
+   Contents
+     1. Constants                      7. The hunt (scores, turns, hunters)
+     2. Utilities                      8. Timer, alarm, wake lock
+     3. Storage (localStorage)         9. Dialogs
+     4. State                         10. End of hunt, results, history
+     5. Navigation                    11. Rules page
+     6. New game                      12. Keyboard, events, start-up
    ========================================================================== */
 
 
 /* =============================================================================
-   1. Constantes
+   1. Constants
    ========================================================================== */
 
-/** Clés localStorage : un préfixe commun + une version du format des données. */
+/** localStorage keys (same keys as earlier versions: saved data is kept). */
 const STORAGE_KEYS = Object.freeze({
   game: 'compteurPoints.v1.partieEnCours',
   history: 'compteurPoints.v1.historique',
-  quickButtons: 'compteurPoints.v1.boutonsRapides',
   setup: 'compteurPoints.v1.configuration',
   prefs: 'compteurPoints.v1.preferences',
+  bounties: 'compteurPoints.v1.primes',
 });
+
+/**
+ * Rules video. Paste a YouTube link (e.g. "https://youtu.be/XXXXXXXXXXX")
+ * or the path of a video file placed next to index.html (e.g. "rules.mp4").
+ * Leave empty to show “Rules video coming soon”.
+ */
+const RULES_VIDEO_URL = '';
 
 const MIN_PLAYERS = 2;
 const MAX_PLAYERS = 10;
 const MAX_NAME_LENGTH = 20;
-const DEFAULT_QUICK_BUTTONS = Object.freeze([100, 200, 300, 500, -50]);
-const MAX_QUICK_BUTTONS = 12;
 const MAX_POINTS = 1e9;
-/** Durées de tour proposées (en secondes) ; toute autre durée est « personnalisée ». */
+/** Round timer presets (seconds), reachable with the arrows. Any other value is “custom”. */
 const TURN_PRESETS = Object.freeze([30, 45, 50, 60, 75]);
 const DEFAULT_TURN_SECONDS = 60;
 const MIN_TURN_SECONDS = 5;
 const MAX_TURN_SECONDS = 3600;
 const HISTORY_LIMIT = 200;
-/** Si le minuteur a expiré il y a plus longtemps (page fermée), on ne sonne pas. */
+/** If the timer ran out long ago (page closed), only the visual signal is shown. */
 const ALARM_GRACE_MS = 5000;
 const ALARM_VIBRATION = [300, 120, 300, 120, 600];
-/** [début (s), durée (s), fréquence (Hz)] */
+/** [start (s), duration (s), frequency (Hz)] */
 const ALARM_BEEPS = [[0, 0.16, 880], [0.24, 0.16, 880], [0.48, 0.16, 880], [0.8, 0.55, 1175]];
-/**
- * Une couleur par place de joueur (saisie 1 → couleur 1, etc.) : les couleurs de
- * la DA Brand Hunters, complétées de tons « western » (turquoise, denim, cactus…).
- */
-const PLAYER_COLORS = Object.freeze([
-  '#F18930', '#2E9C8F', '#C2477F', '#96813A', '#4F7CAC',
-  '#D14B35', '#E8C547', '#8A5CC2', '#5E8C3A', '#F8C787',
+
+/** The four bounty tiers of the game cards. */
+const BOUNTY_TIERS = Object.freeze([
+  { key: 'easy', label: 'Easy', stars: 1 },
+  { key: 'medium', label: 'Medium', stars: 2 },
+  { key: 'difficult', label: 'Difficult', stars: 3 },
+  { key: 'wanted', label: 'Most Wanted', stars: 4 },
 ]);
-const INK_DARK = '#2B1528';  // prune de la DA
-const INK_LIGHT = '#FFF8EE';
-/** Au-delà de cette largeur : mise en page « ordinateur » (classement affiché en permanence). */
-const DESKTOP_QUERY = window.matchMedia('(min-width: 900px)');
+/** Default points; “penalty” is the wrong-answer value (applied as a negative). */
+const DEFAULT_BOUNTIES = Object.freeze({ easy: 100, medium: 200, difficult: 300, wanted: 400, bonus: 50, penalty: 50 });
+const BOUNTY_LABELS = Object.freeze({ easy: 'Easy', medium: 'Medium', difficult: 'Difficult', wanted: 'Most Wanted', bonus: 'Bonus', penalty: 'Wrong answer' });
+
+/** One star colour per hunter (the 4 tier colours first, then western tones). */
+const PLAYER_COLORS = Object.freeze([
+  '#78B13A', '#F18930', '#E33B3F', '#B640B4', '#2BA89A',
+  '#4F86C6', '#E8C547', '#F07AAE', '#F8C787', '#B07A4E',
+]);
+
+const ROUTES = Object.freeze(['new', 'hunt', 'results', 'history', 'rules']);
+const ROUTE_TITLES = Object.freeze({ new: 'New game', hunt: 'The hunt', results: 'Results', history: 'History', rules: 'Rules' });
 const IS_MAC = /Mac|iPhone|iPad|iPod/.test(navigator.platform || navigator.userAgent);
+
+const SHORTCUTS = [
+  ['<kbd>Space</kbd> or <kbd>→</kbd>', 'Next hunter'],
+  ['<kbd>←</kbd>', 'Previous hunter'],
+  ['<kbd>1</kbd> <kbd>2</kbd> <kbd>3</kbd> <kbd>4</kbd>', 'Easy, Medium, Difficult, Most Wanted'],
+  ['<kbd>B</kbd>', 'Bonus'],
+  ['<kbd>X</kbd> or <kbd>−</kbd>', 'Wrong answer'],
+  ['<kbd>S</kbd> or <kbd>+</kbd>', 'Custom points'],
+  ['Number pad', 'Type points directly, then <kbd>Enter</kbd>'],
+  ['<kbd>↑</kbd> <kbd>↓</kbd>', 'Choose who gets the points'],
+  ['<kbd class="js-undo-key">Ctrl+Z</kbd> or <kbd>⌫</kbd>', 'Undo the last points'],
+  ['<kbd>P</kbd> · <kbd>R</kbd> · <kbd>M</kbd>', 'Pause · restart the timer · sound'],
+  ['<kbd>?</kbd>', 'Show the shortcuts'],
+  ['<kbd>Esc</kbd>', 'Close a window'],
+  ['<kbd><span class="js-mod">Ctrl</span>+Enter</kbd>', 'Start the hunt (New game page)'],
+];
 
 
 /* =============================================================================
-   2. Utilitaires
+   2. Utilities
    ========================================================================== */
 
 const $ = (selector, root = document) => root.querySelector(selector);
@@ -71,48 +101,35 @@ const range = (n) => Array.from({ length: n }, (_, i) => i);
 const roundScore = (n) => Math.round(n * 100) / 100;
 const uid = () => Date.now().toString(36) + Math.random().toString(36).slice(2, 8);
 const prefersReducedMotion = () => window.matchMedia('(prefers-reduced-motion: reduce)').matches;
-const isDesktop = () => DESKTOP_QUERY.matches;
+const pad2 = (n) => String(n).padStart(2, '0');
 
 function escapeHtml(value) {
   const map = { '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' };
   return String(value).replace(/[&<>"']/g, (char) => map[char]);
 }
 
+function isColor(color) {
+  return /^#[0-9a-f]{6}$/i.test(color);
+}
+
 function safeColor(color) {
-  return /^#[0-9a-f]{6}$/i.test(color) ? color : '#96813A';
-}
-
-function luminance(hex) {
-  const [r, g, b] = [1, 3, 5]
-    .map((i) => parseInt(hex.slice(i, i + 2), 16) / 255)
-    .map((v) => (v <= 0.03928 ? v / 12.92 : ((v + 0.055) / 1.055) ** 2.4));
-  return 0.2126 * r + 0.7152 * g + 0.0722 * b;
-}
-
-/** Couleur de texte la plus lisible (prune ou blanc cassé) sur un fond donné. */
-function readableOn(hex) {
-  const l = luminance(hex);
-  const onDark = (l + 0.05) / (luminance(INK_DARK) + 0.05);
-  const onLight = (luminance(INK_LIGHT) + 0.05) / (l + 0.05);
-  return onDark >= onLight ? INK_DARK : INK_LIGHT;
-}
-
-/** Variables CSS d'une pastille de joueur : sa couleur et une couleur de texte lisible. */
-function colorVars(color) {
-  const c = safeColor(color);
-  return `--c:${c};--on-c:${readableOn(c)}`;
+  return isColor(color) ? color : '#F8C787';
 }
 
 function icon(name) {
   return `<svg class="icon" aria-hidden="true" focusable="false"><use href="#i-${name}"></use></svg>`;
 }
 
-function initial(name) {
-  const first = Array.from(String(name).trim())[0];
-  return first ? first.toLocaleUpperCase('fr-FR') : '?';
+/** Coloured star of a hunter. */
+function starIcon(color, extraClass = '') {
+  return `<svg class="icon ${extraClass}" style="--c:${safeColor(color)}" aria-hidden="true" focusable="false"><use href="#i-star"></use></svg>`;
 }
 
-/** Mélange de Fisher-Yates (renvoie une copie). */
+function starsHtml(count) {
+  return `<span class="tier-stars" aria-hidden="true">${icon('star').repeat(count)}</span>`;
+}
+
+/** Fisher-Yates shuffle (returns a copy). */
 function shuffle(items) {
   const copy = items.slice();
   for (let i = copy.length - 1; i > 0; i--) {
@@ -131,44 +148,36 @@ function isPermutation(items, n) {
   return Array.isArray(items) && items.length === n && range(n).every((i) => items.includes(i));
 }
 
-const numberFormatter = new Intl.NumberFormat('fr-FR', { maximumFractionDigits: 2 });
+const numberFormatter = new Intl.NumberFormat('en-GB', { maximumFractionDigits: 2 });
 
-/** 1240 → « 1 240 », -50 → « −50 » (vrai signe moins). */
+/** 1240 → “1,240”, -50 → “−50” (true minus sign). */
 function formatNumber(n) {
   return (n < 0 ? '−' : '') + numberFormatter.format(Math.abs(n));
 }
 
-/** 200 → « +200 », -50 → « −50 ». */
+/** 200 → “+200”, -50 → “−50”. */
 function formatSigned(n) {
   return (n > 0 ? '+' : n < 0 ? '−' : '') + numberFormatter.format(Math.abs(n));
 }
 
-function formatPoints(n) {
-  return `${formatNumber(n)} ${Math.abs(n) >= 2 ? 'points' : 'point'}`;
-}
-
 function plural(n, word) {
-  return `${n} ${word}${Math.abs(n) >= 2 ? 's' : ''}`;
+  return `${formatNumber(n)} ${word}${Math.abs(n) === 1 ? '' : 's'}`;
 }
 
-/** Lit un nombre saisi en français (« 12,5 », « −30 », « 1 000 »). Renvoie NaN si invalide. */
+function formatPoints(n) {
+  return plural(n, 'point');
+}
+
+/** Reads a typed number (“12.5”, “12,5”, “−30”, “1,000”). Returns NaN if invalid. */
 function parseNumber(text) {
-  const cleaned = String(text)
-    .trim()
-    .replace(/[\s  ]/g, '')
-    .replace(',', '.')
-    .replace(/[−–]/g, '-');
+  let cleaned = String(text).trim().replace(/[\s  ]/g, '').replace(/[−–]/g, '-');
+  if (/^[+-]?\d{1,3}(,\d{3})+(\.\d+)?$/.test(cleaned)) cleaned = cleaned.replace(/,/g, ''); // 1,000
+  cleaned = cleaned.replace(',', '.');
   if (!/^[+-]?(\d+(\.\d*)?|\.\d+)$/.test(cleaned)) return NaN;
   return roundScore(Number(cleaned));
 }
 
-function numberToInput(n) {
-  return String(n).replace('.', ',');
-}
-
-const pad2 = (n) => String(n).padStart(2, '0');
-
-/** Chronomètre : « 05:42 » ou « 1:05:42 ». */
+/** Hunt clock: “05:42” or “1:05:42”. */
 function formatClock(ms) {
   const total = Math.floor(ms / 1000);
   const h = Math.floor(total / 3600);
@@ -177,23 +186,28 @@ function formatClock(ms) {
   return h ? `${h}:${pad2(m)}:${pad2(s)}` : `${pad2(m)}:${pad2(s)}`;
 }
 
-/** Compte à rebours : « 0:45 » (arrondi à la seconde supérieure). */
+/** Countdown: “01:00” (rounded up to the next second). */
 function formatCountdown(ms) {
   const total = Math.ceil(ms / 1000);
-  return `${Math.floor(total / 60)}:${pad2(total % 60)}`;
+  return `${pad2(Math.floor(total / 60))}:${pad2(total % 60)}`;
 }
 
-/** Durée lisible : « 12 min », « 1 h 05 ». */
+/** Round timer setting: 90 → “01:30”. */
+function formatTimerSetting(seconds) {
+  return `${pad2(Math.floor(seconds / 60))}:${pad2(seconds % 60)}`;
+}
+
+/** Readable duration: “12 min”, “1 h 05”. */
 function formatDuration(ms) {
   const minutes = Math.round(ms / 60000);
-  if (minutes < 1) return 'moins d’1 min';
+  if (minutes < 1) return 'under 1 min';
   if (minutes < 60) return `${minutes} min`;
   const h = Math.floor(minutes / 60);
   const m = minutes % 60;
   return m ? `${h} h ${pad2(m)}` : `${h} h`;
 }
 
-/** 30 → « 30 s », 90 → « 1 min 30 ». */
+/** 30 → “30 s”, 90 → “1 min 30”. */
 function formatSeconds(seconds) {
   if (seconds < 60) return `${seconds} s`;
   const m = Math.floor(seconds / 60);
@@ -201,63 +215,64 @@ function formatSeconds(seconds) {
   return s ? `${m} min ${pad2(s)}` : `${m} min`;
 }
 
-/** Durée de tour valide (nombre entier de secondes, de 5 s à 60 min) ou null. */
+const dateFormatter = new Intl.DateTimeFormat('en-GB', {
+  weekday: 'long', day: 'numeric', month: 'long', year: 'numeric', hour: '2-digit', minute: '2-digit',
+});
+
+function formatDate(timestamp) {
+  return dateFormatter.format(new Date(timestamp));
+}
+
+function rankLabel(rank) {
+  const tens = rank % 100;
+  if (tens >= 11 && tens <= 13) return `${rank}th`;
+  return `${rank}${{ 1: 'st', 2: 'nd', 3: 'rd' }[rank % 10] || 'th'}`;
+}
+
+function ruleLabel(winRule) {
+  return winRule === 'low' ? 'Lowest score wins' : 'Highest score wins';
+}
+
+function joinNames(names) {
+  if (names.length <= 1) return names.join('');
+  return `${names.slice(0, -1).join(', ')} and ${names[names.length - 1]}`;
+}
+
+/** Valid round duration (whole seconds, 5 s to 60 min) or null. */
 function sanitizeTurnSeconds(value) {
   const n = Number(value);
   return Number.isInteger(n) && n >= MIN_TURN_SECONDS && n <= MAX_TURN_SECONDS ? n : null;
 }
 
-/** Lit une durée saisie : « 90 », « 90 s », « 1:30 » ou « 1 min 30 ». Renvoie des secondes ou null. */
+/** Reads a typed duration: “90”, “90 s”, “1:30”, “01:30” or “1 min 30”. Returns seconds or null. */
 function parseTurnDuration(text) {
   const value = String(text).trim().toLowerCase().replace(/\s+/g, '');
-  let match = /^(\d{1,4})(s|sec|secondes?)?$/.exec(value);
+  let match = /^(\d{1,4})(s|sec|secs|seconds?)?$/.exec(value);
   if (match) return sanitizeTurnSeconds(Number(match[1]));
   match = /^(\d{1,2})(?::|min|m)([0-5]?\d)?s?$/.exec(value);
   if (match) return sanitizeTurnSeconds(Number(match[1]) * 60 + Number(match[2] || 0));
   return null;
 }
 
-/** Réglage du minuteur par tour : { enabled, seconds, custom }. */
+/** Round timer setting: { enabled, seconds, custom }. */
 function normalizeTurnTimer(raw) {
   const source = raw && typeof raw === 'object' ? raw : {};
   const seconds = sanitizeTurnSeconds(source.seconds) ?? DEFAULT_TURN_SECONDS;
   return {
-    enabled: Boolean(source.enabled),
+    enabled: source.enabled !== false,
     seconds,
-    custom: source.custom === true || !TURN_PRESETS.includes(seconds),
+    custom: !TURN_PRESETS.includes(seconds),
   };
-}
-
-const dateFormatter = new Intl.DateTimeFormat('fr-FR', {
-  weekday: 'long', day: 'numeric', month: 'long', year: 'numeric', hour: '2-digit', minute: '2-digit',
-});
-
-function formatDate(timestamp, capitalize = true) {
-  const text = dateFormatter.format(new Date(timestamp));
-  return capitalize ? text.charAt(0).toUpperCase() + text.slice(1) : text;
-}
-
-function rankLabel(rank) {
-  return rank === 1 ? '1er' : `${rank}e`;
-}
-
-function ruleLabel(winRule) {
-  return winRule === 'low' ? 'Le score le plus bas gagne' : 'Le score le plus haut gagne';
-}
-
-function joinNames(names) {
-  if (names.length <= 1) return names.join('');
-  return `${names.slice(0, -1).join(', ')} et ${names[names.length - 1]}`;
 }
 
 
 /* =============================================================================
-   3. Stockage (localStorage)
+   3. Storage (localStorage)
    ========================================================================== */
 
 let storageWarningShown = false;
 
-/** Accès sécurisé à localStorage : ne plante jamais (mode privé, quota plein…). */
+/** Safe access to localStorage: never crashes (private mode, full quota…). */
 const store = {
   read(key, fallback) {
     try {
@@ -274,72 +289,79 @@ const store = {
     } catch {
       if (!storageWarningShown) {
         storageWarningShown = true;
-        showToast('Sauvegarde impossible : le stockage du navigateur est plein ou désactivé.', 4500);
+        showToast('Can’t save: the browser storage is full or disabled.', 4500);
       }
       return false;
     }
   },
   remove(key) {
-    try { localStorage.removeItem(key); } catch { /* rien à faire */ }
+    try { localStorage.removeItem(key); } catch { /* nothing to do */ }
   },
 };
 
+/** Gives each hunter a colour, avoiding the ones already used. */
+function assignColors(players) {
+  const used = new Set(players.map((p) => p.color).filter(isColor));
+  players.forEach((p) => {
+    if (isColor(p.color)) return;
+    p.color = PLAYER_COLORS.find((c) => !used.has(c)) || PLAYER_COLORS[0];
+    used.add(p.color);
+  });
+  return players;
+}
+
+function nextFreeColor(players) {
+  const used = new Set(players.map((p) => p.color));
+  return PLAYER_COLORS.find((c) => !used.has(c)) || PLAYER_COLORS[players.length % PLAYER_COLORS.length];
+}
+
 function defaultSetup() {
   return {
-    count: 4,
-    names: Array(MAX_PLAYERS).fill(''),
-    orderMode: 'random',
-    order: shuffle(range(4)),
+    players: range(4).map((i) => ({ name: '', color: PLAYER_COLORS[i] })),
     winRule: 'high',
     conditionalPenalties: true,
-    turnTimer: { enabled: false, seconds: DEFAULT_TURN_SECONDS, custom: false },
+    turnTimer: { enabled: true, seconds: DEFAULT_TURN_SECONDS, custom: false },
   };
 }
 
-/** Configuration de la prochaine partie (brouillon du formulaire). */
+/** Next hunt settings (the New game form). Also reads the format of earlier versions. */
 function loadSetup() {
   const saved = store.read(STORAGE_KEYS.setup, null);
   const setup = defaultSetup();
   if (!saved || typeof saved !== 'object') return setup;
 
-  setup.count = clamp(Number.parseInt(saved.count, 10) || setup.count, MIN_PLAYERS, MAX_PLAYERS);
-  setup.names = range(MAX_PLAYERS).map((i) => {
-    const name = Array.isArray(saved.names) ? saved.names[i] : '';
-    return typeof name === 'string' ? name.slice(0, MAX_NAME_LENGTH) : '';
-  });
-  setup.orderMode = saved.orderMode === 'manual' ? 'manual' : 'random';
-  setup.order = isPermutation(saved.order, setup.count)
-    ? saved.order.slice()
-    : (setup.orderMode === 'random' ? shuffle(range(setup.count)) : range(setup.count));
+  let players = null;
+  if (Array.isArray(saved.players)) {
+    players = saved.players
+      .filter((p) => p && typeof p.name === 'string')
+      .map((p) => ({ name: p.name.slice(0, MAX_NAME_LENGTH), color: isColor(p.color) ? p.color : null }));
+  } else if (Array.isArray(saved.names)) {
+    // Earlier version: names + order (+ count)
+    const count = clamp(Number.parseInt(saved.count, 10) || 4, MIN_PLAYERS, MAX_PLAYERS);
+    const order = isPermutation(saved.order, count) ? saved.order : range(count);
+    players = order.map((slot) => ({ name: String(saved.names[slot] || '').slice(0, MAX_NAME_LENGTH), color: PLAYER_COLORS[slot] }));
+  }
+  if (players && players.length >= MIN_PLAYERS) setup.players = assignColors(players.slice(0, MAX_PLAYERS));
+
   setup.winRule = saved.winRule === 'low' ? 'low' : 'high';
   setup.conditionalPenalties = saved.conditionalPenalties !== false;
-  setup.turnTimer = normalizeTurnTimer(saved.turnTimer);
+  if (saved.turnTimer) setup.turnTimer = normalizeTurnTimer(saved.turnTimer);
   return setup;
 }
 
-/** Positifs croissants d'abord, puis négatifs (−10, −50, −100…). */
-function sortQuickButtons(values) {
-  return values.slice().sort((a, b) => {
-    if ((a > 0) !== (b > 0)) return a > 0 ? -1 : 1;
-    return Math.abs(a) - Math.abs(b);
-  });
+function loadBounties() {
+  const saved = store.read(STORAGE_KEYS.bounties, null);
+  const bounties = { ...DEFAULT_BOUNTIES };
+  if (saved && typeof saved === 'object') {
+    Object.keys(DEFAULT_BOUNTIES).forEach((key) => {
+      const v = Number(saved[key]);
+      if (Number.isFinite(v) && v > 0 && v <= MAX_POINTS) bounties[key] = roundScore(v);
+    });
+  }
+  return bounties;
 }
 
-function sanitizeQuickButtons(values) {
-  if (!Array.isArray(values)) return null;
-  const clean = values
-    .map(Number)
-    .filter((v) => Number.isFinite(v) && v !== 0 && Math.abs(v) <= MAX_POINTS)
-    .map(roundScore);
-  const unique = [...new Set(clean)].slice(0, MAX_QUICK_BUTTONS);
-  return unique.length ? sortQuickButtons(unique) : null;
-}
-
-function loadQuickButtons() {
-  return sanitizeQuickButtons(store.read(STORAGE_KEYS.quickButtons, null)) || DEFAULT_QUICK_BUTTONS.slice();
-}
-
-/** Partie en cours : on vérifie sa forme pour ne jamais planter sur des données abîmées. */
+/** Hunt in progress: its shape is checked so damaged data can never crash the app. */
 function loadGame() {
   const game = store.read(STORAGE_KEYS.game, null);
   const valid = game && typeof game === 'object'
@@ -374,7 +396,7 @@ function loadPrefs() {
 
 const saveSetup = () => store.write(STORAGE_KEYS.setup, state.setup);
 const saveHistory = () => store.write(STORAGE_KEYS.history, state.history);
-const saveQuickButtons = () => store.write(STORAGE_KEYS.quickButtons, state.quickButtons);
+const saveBounties = () => store.write(STORAGE_KEYS.bounties, state.bounties);
 const savePrefs = () => store.write(STORAGE_KEYS.prefs, state.prefs);
 
 function saveGame() {
@@ -383,112 +405,158 @@ function saveGame() {
 
 
 /* =============================================================================
-   4. État de l'application
+   4. State
    ========================================================================== */
 
 const state = {
-  screen: 'setup',
-  returnScreen: 'setup',     // écran à retrouver en quittant l'historique
+  route: null,
   setup: loadSetup(),
   game: loadGame(),
   history: loadHistory(),
-  quickButtons: loadQuickButtons(),
+  bounties: loadBounties(),
   prefs: loadPrefs(),
-  tab: 'players',            // onglet affiché pendant la partie
-  lastResult: null,          // partie qui vient de se terminer (écran résultats)
-  showSetupErrors: false,    // erreurs « obligatoire » visibles après un 1er essai
-  customSign: 1,             // signe de la saisie libre (+1 ou −1)
-  customTarget: 0,           // joueur visé par la saisie libre
+  tab: 'order',             // hunters card: order | ranking | rounds
+  lastResult: null,         // hunt that just ended (results page)
+  showSetupErrors: false,   // “name required” errors shown after a first try
+  customSign: 1,            // sign of the custom points (+1 or −1)
+  customTarget: 0,          // hunter getting the custom points
 };
 
-/** Éléments mis à jour 4 fois par seconde par le chronomètre. */
+/** Elements updated 4 times per second by the timer. */
 const dom = {};
 
 
 /* =============================================================================
-   5. Écran « Configuration »
+   5. Navigation (#/new, #/hunt, #/results, #/history, #/rules)
+   ========================================================================== */
+
+const defaultRoute = () => (state.game ? 'hunt' : 'new');
+
+function routeFromHash() {
+  const match = /^#\/(\w+)/.exec(location.hash);
+  return match && ROUTES.includes(match[1]) ? match[1] : null;
+}
+
+function navigate(route, { replace = false } = {}) {
+  const hash = `#/${route}`;
+  if (location.hash === hash) {
+    showScreen(route);
+  } else if (replace) {
+    window.history.replaceState(null, '', hash);
+    showScreen(route);
+  } else {
+    location.hash = hash; // → hashchange → showScreen
+  }
+}
+
+function showScreen(requested, { initial = false } = {}) {
+  let route = requested;
+  if (route === 'hunt' && !state.game) route = 'new';
+  if (route === 'results' && !state.lastResult) route = defaultRoute();
+  if (route !== requested) {
+    window.history.replaceState(null, '', `#/${route}`);
+  }
+
+  const changed = state.route !== route;
+  state.route = route;
+  $$('.screen').forEach((screen) => { screen.hidden = screen.dataset.screen !== route; });
+  $$('.nav-link').forEach((link) => {
+    if (link.dataset.route === route) link.setAttribute('aria-current', 'page');
+    else link.removeAttribute('aria-current');
+  });
+  $('#nav-hunt').hidden = !state.game;
+  document.title = `${ROUTE_TITLES[route]} · Brand Hunters`;
+
+  if (route === 'new') renderSetup();
+  else if (route === 'hunt') renderHunt();
+  else if (route === 'results') renderResults();
+  else if (route === 'history') renderHistory();
+  else if (route === 'rules') renderRules();
+
+  if (changed) {
+    window.scrollTo(0, 0);
+    if (!initial) {
+      const title = $(`.screen[data-screen="${route}"] h1`);
+      if (title) {
+        title.tabIndex = -1;
+        title.focus({ preventScroll: true });
+      }
+    }
+  }
+  syncRuntime();
+}
+
+
+/* =============================================================================
+   6. New game
    ========================================================================== */
 
 function renderSetup() {
   const s = state.setup;
-  $('#player-count').textContent = s.count;
-  $('[data-action="count-dec"]').disabled = s.count <= MIN_PLAYERS;
-  $('[data-action="count-inc"]').disabled = s.count >= MAX_PLAYERS;
-  renderNameInputs();
-  renderOrderList();
-  checkRadio('orderMode', s.orderMode);
+  $('#resume-banner').hidden = !state.game;
+  $('#player-count').textContent = s.players.length;
+  $('[data-action="count-dec"]').disabled = s.players.length <= MIN_PLAYERS;
+  $('[data-action="count-inc"]').disabled = s.players.length >= MAX_PLAYERS;
+  renderNameList();
+  renderTimerSetting('setup');
+  renderSetupBounty();
   checkRadio('winRule', s.winRule);
   $('#conditional-penalties').checked = s.conditionalPenalties;
-  renderTimerPicker('setup');
 }
 
 function checkRadio(name, value) {
-  $$(`input[name="${name}"]`).forEach((input) => {
-    input.checked = input.value === String(value);
-  });
+  $$(`input[name="${name}"]`).forEach((input) => { input.checked = input.value === String(value); });
 }
 
-/** Les champs ne sont créés/supprimés qu'au besoin, pour ne pas perdre le focus. */
-function renderNameInputs() {
-  const s = state.setup;
-  const list = $('#name-list');
+/* --- Hunters' names ------------------------------------------------------ */
 
-  while (list.children.length > s.count) list.lastElementChild.remove();
-  for (let i = list.children.length; i < s.count; i++) {
-    const item = document.createElement('li');
-    item.className = 'name-item';
-    item.innerHTML = `
-      <span class="avatar" style="${colorVars(PLAYER_COLORS[i])}" aria-hidden="true"></span>
-      <div class="name-field">
-        <label class="visually-hidden" for="name-${i}">Prénom du joueur ${i + 1}</label>
-        <input class="input" id="name-${i}" type="text" data-name-index="${i}"
+function hunterLabel(index) {
+  return state.setup.players[index].name.trim() || `Player ${index + 1}`;
+}
+
+function renderNameList() {
+  const players = state.setup.players;
+  $('#name-list').innerHTML = players.map((p, i) => {
+    const label = escapeHtml(hunterLabel(i));
+    return `
+      <li class="name-row" data-index="${i}">
+        ${starIcon(p.color, 'name-star')}
+        <input class="name-input" id="name-${i}" type="text" data-name-index="${i}" value="${escapeHtml(p.name)}"
           maxlength="${MAX_NAME_LENGTH}" autocomplete="off" autocapitalize="words" spellcheck="false"
-          placeholder="Prénom du joueur ${i + 1}" aria-describedby="name-error-${i}">
+          enterkeyhint="${i === players.length - 1 ? 'done' : 'next'}" placeholder="Player ${i + 1}"
+          aria-label="Name of hunter ${i + 1}" aria-describedby="name-error-${i}">
+        <button type="button" class="icon-btn drag-handle" data-drag-handle data-index="${i}" aria-label="Move ${label} (arrow keys)">${icon('grip')}</button>
+        <button type="button" class="icon-btn" data-action="remove-player" data-index="${i}" aria-label="Remove ${label}"${players.length <= MIN_PLAYERS ? ' disabled' : ''}>${icon('trash')}</button>
         <p class="field-error" id="name-error-${i}"></p>
-      </div>`;
-    list.append(item);
-  }
-
-  $$('input[data-name-index]', list).forEach((input) => {
-    const i = Number(input.dataset.nameIndex);
-    if (input.value !== s.names[i]) input.value = s.names[i];
-    input.enterKeyHint = i === s.count - 1 ? 'done' : 'next';
-    updateNameAvatar(i);
-  });
+      </li>`;
+  }).join('');
   updateNameErrors();
 }
 
-function updateNameAvatar(index) {
-  const avatar = $(`#name-list li:nth-child(${index + 1}) .avatar`);
-  if (!avatar) return;
-  const name = state.setup.names[index];
-  avatar.textContent = name.trim() ? initial(name) : String(index + 1);
-}
-
 const NAME_ERRORS = {
-  required: 'Le prénom est obligatoire.',
-  duplicate: 'Ce prénom est déjà pris (ajoutez une initiale par exemple).',
+  required: 'Enter a name.',
+  duplicate: 'This name is already taken (add an initial, for example).',
 };
 
-/** Renvoie, pour chaque joueur, null ou un code d'erreur (« required », « duplicate »). */
+/** For each hunter: null or an error code (“required”, “duplicate”). */
 function getNameErrors() {
-  const { count, names } = state.setup;
-  const errors = Array(count).fill(null);
-  const firstIndexByName = new Map();
-  for (let i = 0; i < count; i++) {
-    const name = names[i].trim();
+  const players = state.setup.players;
+  const errors = players.map(() => null);
+  const firstIndex = new Map();
+  players.forEach((p, i) => {
+    const name = p.name.trim();
     if (!name) {
       errors[i] = 'required';
-      continue;
+      return;
     }
-    const key = name.toLocaleLowerCase('fr-FR');
-    if (firstIndexByName.has(key)) {
+    const key = name.toLocaleLowerCase('en');
+    if (firstIndex.has(key)) {
       errors[i] = 'duplicate';
-      errors[firstIndexByName.get(key)] = 'duplicate';
+      errors[firstIndex.get(key)] = 'duplicate';
     } else {
-      firstIndexByName.set(key, i);
+      firstIndex.set(key, i);
     }
-  }
+  });
   return errors;
 }
 
@@ -498,7 +566,7 @@ function updateNameErrors() {
     const input = $(`#name-${i}`);
     const message = $(`#name-error-${i}`);
     if (!input || !message) return;
-    // Les doublons sont signalés tout de suite, les champs vides après un 1er essai.
+    // Duplicates are shown at once; empty names after a first attempt.
     const visible = error === 'duplicate' || (error === 'required' && state.showSetupErrors);
     input.setAttribute('aria-invalid', visible ? 'true' : 'false');
     message.textContent = visible ? NAME_ERRORS[error] : '';
@@ -508,105 +576,70 @@ function updateNameErrors() {
 
 function onNameInput(input) {
   const index = Number(input.dataset.nameIndex);
-  state.setup.names[index] = input.value.slice(0, MAX_NAME_LENGTH);
-  updateNameAvatar(index);
+  state.setup.players[index].name = input.value.slice(0, MAX_NAME_LENGTH);
   updateNameErrors();
-  renderOrderList();
   saveSetup();
 }
 
 function setPlayerCount(count) {
-  const s = state.setup;
+  const players = state.setup.players;
   const next = clamp(count, MIN_PLAYERS, MAX_PLAYERS);
-  if (next === s.count) return;
-  if (s.orderMode === 'random') s.order = shuffle(range(next));
-  else if (next > s.count) s.order = s.order.concat(range(next).slice(s.count));
-  else s.order = s.order.filter((slot) => slot < next);
-  s.count = next;
+  if (next === players.length) return;
+  while (players.length < next) players.push({ name: '', color: nextFreeColor(players) });
+  while (players.length > next) players.pop();
   saveSetup();
   renderSetup();
 }
 
-function playerLabel(slot) {
-  return state.setup.names[slot].trim() || `Joueur ${slot + 1}`;
-}
-
-function renderOrderList() {
-  const s = state.setup;
-  const manual = s.orderMode === 'manual';
-  const list = $('#order-list');
-
-  $('#shuffle-btn').hidden = manual;
-  $('#order-hint').textContent = manual
-    ? 'Glissez les joueurs avec la poignée ⠿ ou utilisez les flèches.'
-    : 'L’ordre est tiré au sort. Touchez « Mélanger » pour refaire le tirage.';
-  list.classList.toggle('is-manual', manual);
-
-  list.innerHTML = s.order.map((slot, pos) => {
-    const label = escapeHtml(playerLabel(slot));
-    const placeholder = s.names[slot].trim() ? '' : ' is-placeholder';
-    const controls = manual ? `
-        <button type="button" class="icon-btn" data-action="move-up" data-pos="${pos}" aria-label="Monter ${label}"${pos === 0 ? ' disabled' : ''}>${icon('up')}</button>
-        <button type="button" class="icon-btn" data-action="move-down" data-pos="${pos}" aria-label="Descendre ${label}"${pos === s.order.length - 1 ? ' disabled' : ''}>${icon('down')}</button>
-        <span class="drag-handle" data-drag-handle aria-hidden="true">${icon('grip')}</span>` : '';
-    return `
-      <li class="order-item" data-pos="${pos}">
-        <span class="order-pos" style="${colorVars(PLAYER_COLORS[slot])}">${pos + 1}</span>
-        <span class="order-name${placeholder}">${label}</span>${controls}
-      </li>`;
-  }).join('');
-}
-
-function setOrderMode(mode) {
-  const s = state.setup;
-  if (mode === s.orderMode) return;
-  s.orderMode = mode === 'manual' ? 'manual' : 'random';
-  if (s.orderMode === 'random') s.order = shuffle(range(s.count));
+function removePlayer(index) {
+  const players = state.setup.players;
+  if (players.length <= MIN_PLAYERS || !players[index]) return;
+  players.splice(index, 1);
   saveSetup();
-  renderOrderList();
+  renderSetup();
 }
 
-/** « Mélanger » : on garantit un ordre différent du précédent. */
-function reshuffleOrder() {
-  const s = state.setup;
-  let next = shuffle(range(s.count));
-  for (let tries = 0; tries < 20 && next.join() === s.order.join(); tries++) next = shuffle(range(s.count));
-  s.order = next;
+/** “Shuffle”: random turn order, always different from the current one. */
+function shuffleHunters() {
+  const players = state.setup.players;
+  const before = players.map((p) => p.color).join();
+  let next = shuffle(players);
+  for (let tries = 0; tries < 20 && next.map((p) => p.color).join() === before; tries++) next = shuffle(players);
+  state.setup.players = next;
   saveSetup();
-  renderOrderList();
-  const list = $('#order-list');
+  renderNameList();
+  const list = $('#name-list');
   list.classList.remove('is-shuffled');
-  void list.offsetWidth; // relance l'animation
+  void list.offsetWidth; // restarts the animation
   list.classList.add('is-shuffled');
 }
 
-function moveOrder(pos, delta) {
-  const order = state.setup.order;
-  const to = pos + delta;
-  if (to < 0 || to >= order.length) return;
-  moveItem(order, pos, to);
+function moveHunter(index, delta, focusHandle = false) {
+  const players = state.setup.players;
+  const to = index + delta;
+  if (to < 0 || to >= players.length) return;
+  moveItem(players, index, to);
   saveSetup();
-  renderOrderList();
-  // Garde le focus sur le même joueur pour pouvoir appuyer plusieurs fois.
-  const same = $(`#order-list [data-action="${delta < 0 ? 'move-up' : 'move-down'}"][data-pos="${to}"]`);
-  const fallback = $(`#order-list .order-item[data-pos="${to}"] .icon-btn:not([disabled])`);
-  const focusTarget = same && !same.disabled ? same : fallback;
-  if (focusTarget) focusTarget.focus({ preventScroll: true });
-  const item = $(`#order-list .order-item[data-pos="${to}"]`);
-  if (item) item.classList.add('is-moved');
+  renderNameList();
+  const row = $(`#name-list .name-row[data-index="${to}"]`);
+  if (row) row.classList.add('is-moved');
+  if (focusHandle) {
+    const handle = $(`#name-list [data-drag-handle][data-index="${to}"]`);
+    if (handle) handle.focus({ preventScroll: true });
+  }
 }
 
-/** Glisser-déposer tactile et souris (Pointer Events), via la poignée. */
-function initOrderDrag() {
-  const list = $('#order-list');
+/** Drag and drop (touch and mouse) with the ⠿ handle. */
+function initNameDrag() {
+  const list = $('#name-list');
 
   list.addEventListener('pointerdown', (event) => {
     const handle = event.target.closest('[data-drag-handle]');
-    if (!handle || state.setup.orderMode !== 'manual') return;
+    if (!handle) return;
     if (event.pointerType === 'mouse' && event.button !== 0) return;
     event.preventDefault();
 
-    const item = handle.closest('.order-item');
+    const item = handle.closest('.name-row');
     const items = Array.from(list.children);
     const from = items.indexOf(item);
     const rects = items.map((el) => el.getBoundingClientRect());
@@ -616,7 +649,7 @@ function initOrderDrag() {
 
     item.classList.add('is-dragging');
     list.classList.add('is-sorting');
-    try { handle.setPointerCapture(event.pointerId); } catch { /* ignoré */ }
+    try { handle.setPointerCapture(event.pointerId); } catch { /* ignored */ }
 
     const onMove = (moveEvent) => {
       const min = -from * step - step / 2;
@@ -639,11 +672,11 @@ function initOrderDrag() {
       handle.removeEventListener('pointercancel', onEnd);
       list.classList.remove('is-sorting');
       if (to !== from) {
-        moveItem(state.setup.order, from, to);
+        moveItem(state.setup.players, from, to);
         saveSetup();
       }
-      renderOrderList();
-      const moved = $(`#order-list .order-item[data-pos="${to}"]`);
+      renderNameList();
+      const moved = $(`#name-list .name-row[data-index="${to}"]`);
       if (moved && to !== from) moved.classList.add('is-moved');
     };
 
@@ -653,134 +686,136 @@ function initOrderDrag() {
   });
 }
 
-/* --- Minuteur par tour : pastilles + durée personnalisée -------------------
-   Le même sélecteur sert sur l'écran de configuration (« setup ») et dans le
-   menu de la partie (« menu »). */
+/* --- Round timer (New game + hunt settings) ------------------------------ */
 
-const TIMER_SCOPES = {
-  setup: { picker: '#setup-timer-picker', toggle: '#turn-timer-enabled' },
-  menu: { picker: '#menu-timer-picker', toggle: '#menu-turn-enabled' },
-};
+const TIMER_SCOPES = { setup: '#setup-timer', settings: '#settings-timer' };
+const TIMER_HELP = 'Arrows: Off, 30, 45, 50, 60 or 75 s. Or type any time (e.g. 90 or 1:30).';
 
-function timerPickerHtml(scope) {
-  const name = `turnDuration-${scope}`;
-  const chips = TURN_PRESETS.map((sec) => `
-      <label class="chip"><input type="radio" name="${name}" value="${sec}"><span>${sec} s</span></label>`).join('');
+function timerSettingHtml(scope) {
   return `
-    <div class="chips" role="radiogroup" aria-label="Durée d’un tour">${chips}
-      <label class="chip"><input type="radio" name="${name}" value="custom"><span>Personnalisé</span></label>
+    <div class="time-stepper">
+      <button type="button" class="round-btn" data-action="timer-step" data-dir="-1" aria-label="Shorter round timer">${icon('prev')}</button>
+      <input class="time-field" id="${scope}-time" type="text" inputmode="numeric" enterkeyhint="done" autocomplete="off"
+        maxlength="8" aria-label="Round timer duration" aria-describedby="${scope}-time-help">
+      <button type="button" class="round-btn" data-action="timer-step" data-dir="1" aria-label="Longer round timer">${icon('next')}</button>
     </div>
-    <div class="timer-custom" hidden>
-      <label class="visually-hidden" for="${scope}-timer-custom">Durée personnalisée d’un tour, en secondes</label>
-      <div class="timer-custom-row">
-        <input class="input timer-custom-input" id="${scope}-timer-custom" type="text" inputmode="numeric"
-          enterkeyhint="done" autocomplete="off" maxlength="8" placeholder="90" aria-describedby="${scope}-timer-help">
-        <span class="timer-custom-unit">secondes</span>
-      </div>
-      <p class="timer-custom-help" id="${scope}-timer-help"></p>
-    </div>`;
+    <p class="time-help" id="${scope}-time-help">${TIMER_HELP}</p>`;
 }
 
 function getTimerConfig(scope) {
-  if (scope === 'menu') {
+  if (scope === 'settings') {
     const timer = state.game.turnTimer;
-    return normalizeTurnTimer({ ...timer, seconds: Math.round(timer.durationMs / 1000) });
+    return normalizeTurnTimer({ enabled: timer.enabled, seconds: Math.round(timer.durationMs / 1000) });
   }
   return state.setup.turnTimer;
 }
 
-function renderTimerPicker(scope) {
-  const { picker, toggle } = TIMER_SCOPES[scope];
-  const box = $(picker);
-  if (!box || (scope === 'menu' && !state.game)) return;
-  if (!box.childElementCount) box.innerHTML = timerPickerHtml(scope);
+function renderTimerSetting(scope, { force = false } = {}) {
+  const box = $(TIMER_SCOPES[scope]);
+  if (!box || (scope === 'settings' && !state.game)) return;
+  if (!box.childElementCount) box.innerHTML = timerSettingHtml(scope);
 
   const config = getTimerConfig(scope);
-  $(toggle).checked = config.enabled;
-  $$('input[type="radio"]', box).forEach((input) => {
-    input.checked = config.custom ? input.value === 'custom' : Number(input.value) === config.seconds;
-  });
-  $('.timer-custom', box).hidden = !config.custom;
-  const field = $('.timer-custom-input', box);
-  if (document.activeElement !== field) field.value = String(config.seconds); // pas pendant la saisie
-  updateTimerHelp(field);
-  box.classList.toggle('is-off', !config.enabled);
+  const field = $('.time-field', box);
+  if (force || document.activeElement !== field) {
+    field.value = config.enabled ? formatTimerSetting(config.seconds) : 'OFF';
+    field.classList.toggle('is-off', !config.enabled);
+  }
+  const value = config.enabled ? config.seconds : 0;
+  const [shorter, longer] = $$('[data-action="timer-step"]', box);
+  shorter.disabled = value === 0;
+  longer.disabled = value >= TURN_PRESETS[TURN_PRESETS.length - 1];
 }
 
-/** Met à jour l'aide sous la durée personnalisée ; renvoie la durée lue (ou null). */
-function updateTimerHelp(field) {
-  const help = $('.timer-custom-help', field.closest('.timer-custom'));
-  const raw = field.value.trim();
-  const seconds = parseTurnDuration(raw);
-  const invalid = seconds === null && raw !== '';
-  field.setAttribute('aria-invalid', String(invalid));
-  help.classList.toggle('is-error', invalid);
-  if (invalid) help.textContent = 'Saisissez une durée entre 5 secondes et 60 minutes (ex. : 90 ou 1:30).';
-  else if (seconds === null) help.textContent = 'Entre 5 secondes et 60 minutes.';
-  else help.textContent = seconds >= 60 ? `Soit ${formatSeconds(seconds)} par tour.` : `${seconds} secondes par tour.`;
-  return seconds;
+function setTimerHelp(box, error) {
+  const help = $('.time-help', box);
+  help.classList.toggle('is-error', Boolean(error));
+  help.textContent = error || TIMER_HELP;
 }
 
 function applyTimerConfig(scope, changes) {
   const config = normalizeTurnTimer({ ...getTimerConfig(scope), ...changes });
-  if (scope === 'menu') {
+  if (scope === 'settings') {
     setGameTurnTimer(config);
   } else {
     state.setup.turnTimer = config;
     saveSetup();
   }
-  renderTimerPicker(scope);
+  renderTimerSetting(scope, { force: true });
 }
 
-function onTimerPresetChange(input) {
-  const scope = input.closest('[data-timer-scope]').dataset.timerScope;
-  if (input.value === 'custom') {
-    applyTimerConfig(scope, { enabled: true, custom: true });
-    const field = $(`${TIMER_SCOPES[scope].picker} .timer-custom-input`);
-    field.focus();
-    field.select();
-  } else {
-    applyTimerConfig(scope, { enabled: true, seconds: Number(input.value), custom: false });
+/** Arrows: Off → 30 → 45 → 50 → 60 → 75 s (a custom value jumps to the nearest preset). */
+function stepTimer(button) {
+  const scope = button.closest('[data-timer-scope]').dataset.timerScope;
+  const config = getTimerConfig(scope);
+  const steps = [0, ...TURN_PRESETS];
+  const value = config.enabled ? config.seconds : 0;
+  const dir = Number(button.dataset.dir);
+  const next = dir > 0 ? steps.find((v) => v > value) : steps.slice().reverse().find((v) => v < value);
+  if (next === undefined) return;
+  setTimerHelp($(TIMER_SCOPES[scope]), null);
+  applyTimerConfig(scope, next === 0 ? { enabled: false } : { enabled: true, seconds: next });
+}
+
+/** Typed duration, applied when the field is left (or with Enter). */
+function commitTimerField(field) {
+  const box = field.closest('[data-timer-scope]');
+  const scope = box.dataset.timerScope;
+  const raw = field.value.trim().toLowerCase();
+  if (!raw) {
+    renderTimerSetting(scope, { force: true });
+    return;
   }
+  if (['off', '0', '0:00', '00:00'].includes(raw)) {
+    setTimerHelp(box, null);
+    applyTimerConfig(scope, { enabled: false });
+    return;
+  }
+  const seconds = parseTurnDuration(raw);
+  if (seconds === null) {
+    renderTimerSetting(scope, { force: true });
+    setTimerHelp(box, 'Enter a time between 5 s and 60 min (e.g. 90 or 1:30).');
+    return;
+  }
+  setTimerHelp(box, null);
+  applyTimerConfig(scope, { enabled: true, seconds });
 }
 
-/**
- * Durée personnalisée : appliquée pendant la frappe sur la configuration,
- * mais seulement à la validation (Entrée / sortie du champ) en cours de partie,
- * pour ne pas relancer le minuteur à chaque chiffre tapé.
- */
-function onTimerCustomInput(field, committed) {
-  const scope = field.closest('[data-timer-scope]').dataset.timerScope;
-  const seconds = updateTimerHelp(field);
-  if (seconds === null) return;
-  if (scope === 'setup' || committed) applyTimerConfig(scope, { enabled: true, seconds, custom: true });
+/* --- Bounty preview ------------------------------------------------------ */
+
+function renderSetupBounty() {
+  const b = state.bounties;
+  const tiles = BOUNTY_TIERS.map((t) => `
+    <button type="button" class="tier tier-${t.key}" data-action="edit-bounties" aria-label="${t.label}: ${formatPoints(b[t.key])} (edit)">
+      ${starsHtml(t.stars)}<span class="tier-label">${t.label}</span><span class="tier-value">${formatSigned(b[t.key])}</span>
+    </button>`).join('');
+  $('#setup-bounty').innerHTML = `
+    <div class="tier-row">${tiles}</div>
+    <div class="extra-row">
+      <button type="button" class="pill-btn pill-btn-bonus" data-action="edit-bounties">${icon('plus-circle')}<span>Bonus</span><b class="pill-value">${formatSigned(b.bonus)}</b></button>
+      <button type="button" class="pill-btn pill-btn-wrong" data-action="edit-bounties">${icon('x-circle')}<span>Wrong answer</span><b class="pill-value">${formatSigned(-b.penalty)}</b></button>
+    </div>`;
 }
 
-/** Pré-remplit la configuration avec les joueurs et réglages d'une partie. */
-function prefillSetup({ players, winRule, orderMode, turnTimer, conditionalPenalties }) {
-  const list = players.slice(0, MAX_PLAYERS);
-  const count = clamp(list.length, MIN_PLAYERS, MAX_PLAYERS);
-  let slots = list.map((p) => p.slot);
-  if (!isPermutation(slots, count)) slots = range(count);
-
-  const names = state.setup.names.slice();
-  list.forEach((p, i) => { names[slots[i]] = String(p.name).slice(0, MAX_NAME_LENGTH); });
-
-  const manual = orderMode === 'manual';
+/** Fills the New game form with the hunters and settings of a hunt. */
+function prefillSetup({ players, winRule, turnTimer, conditionalPenalties }) {
   state.setup = {
-    count,
-    names,
-    orderMode: manual ? 'manual' : 'random',
-    order: manual ? slots : shuffle(range(count)),
+    players: assignColors(players.slice(0, MAX_PLAYERS).map((p) => ({
+      name: String(p.name).slice(0, MAX_NAME_LENGTH),
+      color: isColor(p.color) ? p.color : null,
+    }))),
     winRule: winRule === 'low' ? 'low' : 'high',
     conditionalPenalties: conditionalPenalties !== false,
-    turnTimer: normalizeTurnTimer(turnTimer),
+    turnTimer: normalizeTurnTimer(turnTimer || state.setup.turnTimer),
   };
+  while (state.setup.players.length < MIN_PLAYERS) {
+    state.setup.players.push({ name: '', color: nextFreeColor(state.setup.players) });
+  }
   state.showSetupErrors = false;
   saveSetup();
 }
 
-function startGame() {
+async function startGame() {
   state.showSetupErrors = true;
   const errors = updateNameErrors();
   const firstError = errors.findIndex(Boolean);
@@ -788,35 +823,29 @@ function startGame() {
     const input = $(`#name-${firstError}`);
     input.focus();
     input.scrollIntoView({ block: 'center', behavior: prefersReducedMotion() ? 'auto' : 'smooth' });
-    showToast('Vérifiez les prénoms des joueurs.');
+    showToast('Check the hunters’ names.');
     return;
+  }
+  if (state.game) {
+    const confirmed = await confirmDialog({
+      title: 'A hunt is in progress',
+      message: 'Starting a new hunt ends the current one without saving it.',
+      confirmLabel: 'Start new hunt',
+      danger: true,
+    });
+    if (!confirmed) return;
+    discardGame();
   }
 
   const s = state.setup;
-  if (s.turnTimer.enabled && s.turnTimer.custom) {
-    const field = $('#setup-timer-picker .timer-custom-input');
-    if (updateTimerHelp(field) === null) {
-      field.focus();
-      field.scrollIntoView({ block: 'center', behavior: prefersReducedMotion() ? 'auto' : 'smooth' });
-      showToast('Vérifiez la durée du minuteur.');
-      return;
-    }
-  }
-
   const now = Date.now();
   state.game = {
-    version: 1,
+    version: 2,
     id: uid(),
     startedAt: now,
     winRule: s.winRule,
     conditionalPenalties: s.conditionalPenalties,
-    orderMode: s.orderMode,
-    players: s.order.map((slot) => ({
-      id: `p${slot}`,
-      slot,
-      name: s.names[slot].trim(),
-      color: PLAYER_COLORS[slot],
-    })),
+    players: s.players.map((p, i) => ({ id: `p${i}`, name: p.name.trim(), color: p.color })),
     current: 0,
     target: 0,
     round: 1,
@@ -831,30 +860,29 @@ function startGame() {
       expired: false,
     },
   };
-  state.tab = 'players';
+  state.tab = 'order';
   state.showSetupErrors = false;
   saveGame();
-  showScreen('game');
+  navigate('hunt');
 }
 
 
 /* =============================================================================
-   6. Écran « Partie »
+   7. The hunt
    ========================================================================== */
 
-/** Numéro du tour de jeu en cours (un tour de jeu = le passage d'un joueur). */
+/** Number of the current turn (one turn = one hunter's go), counted from the start. */
 const turnIndex = (game) => (game.round - 1) * game.players.length + game.current;
 
 /*
- * Pénalités conditionnelles (règle Brand Hunters) : un point négatif (ex. −50 par
- * mauvaise réponse) ne compte que si le même joueur marque aussi des points
- * positifs pendant le même tour de jeu, c'est-à-dire s'il finit par trouver.
- * Chaque saisie a donc un état :
- *   counted   → compte dans le total ;
- *   pending   → tour en cours, la réponse n'a pas (encore) été trouvée ;
- *   cancelled → tour terminé sans bonne réponse : la pénalité est annulée.
- * Cet état est recalculé à partir des saisies, rien n'est effacé : « Joueur
- * précédent » et « Annuler » remettent tout d'aplomb.
+ * Wrong answers only count if the hunter finds (Brand Hunters rule): a negative
+ * entry counts only if the same hunter also scores positive points during the
+ * same turn. Each entry therefore has a status:
+ *   counted   → included in the total;
+ *   pending   → current turn, the bounty is not (yet) found;
+ *   cancelled → turn over without finding: the penalty is dropped.
+ * The status is computed from the entries (nothing is deleted), so “Previous
+ * hunter” and “Undo” always leave the scores right.
  */
 function computeScores(game, { finished = false } = {}) {
   const totals = {};
@@ -881,13 +909,12 @@ function getTotals(game, options) {
   return computeScores(game, options).totals;
 }
 
-/** Le joueur a-t-il déjà marqué des points positifs pendant ce tour de jeu ? */
 function hasScoredThisTurn(game, playerId) {
   const k = turnIndex(game);
   return game.entries.some((e) => e.p === playerId && e.k === k && e.v > 0);
 }
 
-/** Joueurs ayant des pénalités en attente : [{ name, amount }]. */
+/** Hunters with pending penalties: [{ name, amount }]. */
 function pendingPenalties(game) {
   const { pending } = computeScores(game);
   return game.players.filter((p) => pending[p.id] < 0).map((p) => ({ name: p.name, amount: pending[p.id] }));
@@ -897,7 +924,7 @@ function describePenalties(list) {
   return list.map((item) => `${item.name} ${formatSigned(item.amount)}`).join(', ');
 }
 
-/** Classement « sportif » : deux scores égaux partagent le même rang (1, 1, 3…). */
+/** Sports ranking: equal scores share a rank (1, 1, 3…). */
 function computeRanking(game, totals = getTotals(game)) {
   const direction = game.winRule === 'low' ? 1 : -1;
   const rows = game.players.map((p, index) => ({ ...p, index, score: totals[p.id] }));
@@ -910,103 +937,102 @@ function computeRanking(game, totals = getTotals(game)) {
   return rows;
 }
 
-function renderGame() {
+function renderHunt() {
   const g = state.game;
   if (!g) return;
   const scores = computeScores(g);
   const ranking = computeRanking(g, scores.totals);
-  renderGameBar(g);
+  $('#round-badge').textContent = `Round ${g.round}`;
+  renderCurrentHunter(g, scores);
+  renderPointsCard(g);
   renderTabs();
-  renderPlayerList(g, scores, ranking);
+  renderHunterList(g, scores);
   renderRanking(g, ranking);
-  renderSheet(g, scores);
-  renderControls(g);
+  renderRounds(g, scores);
+  renderTimerControls();
   tick();
 }
 
-function renderGameBar(g) {
-  const paused = isPaused(g);
-  dom.screenGame.classList.toggle('is-paused', paused);
-  $('#clock-icon').innerHTML = icon(paused ? 'play' : 'pause');
-  $('#clock-btn').setAttribute('aria-label', paused ? 'Reprendre la partie' : 'Mettre la partie en pause');
-  $('#paused-banner').hidden = !paused;
-  $('#round-number').textContent = `Tour ${g.round}`;
-  $('#round-player').textContent = ` · à ${g.players[g.current].name} de jouer`;
-  dom.turnTimer.hidden = !g.turnTimer.enabled;
+function renderCurrentHunter(g, scores) {
+  const current = g.players[g.current];
+  const target = g.players[g.target];
+  $('#current-hunter').innerHTML = `${starIcon(current.color)}<span class="hunter-pill-name">${escapeHtml(current.name)}</span>`;
+  $('#prev-btn').disabled = g.round <= 1 && g.current === 0;
+
+  const notes = [];
+  if (scores.pending[current.id] < 0) {
+    notes.push(`${formatSigned(scores.pending[current.id])} pending · counts if the bounty is found`);
+  }
+  let html = notes.map(escapeHtml).join('');
+  if (g.target !== g.current) {
+    html += `${html ? '<br>' : ''}Points go to ${starIcon(target.color, 'icon-inline')} <strong>${escapeHtml(target.name)}</strong> · <button type="button" class="link-btn" data-action="reset-target">back to ${escapeHtml(current.name)}</button>`;
+  }
+  $('#current-note').innerHTML = html;
 }
 
-/** Sur ordinateur, le classement est toujours visible à droite : son onglet n'existe pas. */
-function activeTab() {
-  return state.tab === 'ranking' && isDesktop() ? 'players' : state.tab;
+function renderPointsCard(g) {
+  const b = state.bounties;
+  const target = g.players[g.target];
+  $('#points-target').innerHTML = `Points for ${starIcon(target.color)} <strong>${escapeHtml(target.name)}</strong>${g.target !== g.current ? ' (off turn)' : ''}`;
+  $('#bounty-grid').innerHTML = BOUNTY_TIERS.map((t, i) => `
+    <button type="button" class="tier tier-${t.key}" data-action="add-bounty" data-key="${t.key}" aria-label="${t.label}: add ${formatPoints(b[t.key])}" aria-keyshortcuts="${i + 1}">
+      <kbd class="kbd" aria-hidden="true">${i + 1}</kbd>${starsHtml(t.stars)}<span class="tier-label">${t.label}</span><span class="tier-value">${formatSigned(b[t.key])}</span>
+    </button>`).join('');
+  $('#bonus-btn').innerHTML = `${icon('plus-circle')}<span>Bonus</span><b class="pill-value">${formatSigned(b.bonus)}</b><kbd class="kbd" aria-hidden="true">B</kbd>`;
+  $('#bonus-btn').setAttribute('aria-label', `Bonus: add ${formatPoints(b.bonus)}`);
+  $('#wrong-btn').innerHTML = `${icon('x-circle')}<span>Wrong</span><b class="pill-value">${formatSigned(-b.penalty)}</b><kbd class="kbd" aria-hidden="true">X</kbd>`;
+  $('#wrong-btn').setAttribute('aria-label', `Wrong answer: ${formatSigned(-b.penalty)}`);
+  $('#undo-btn').disabled = g.entries.length === 0;
 }
 
 function renderTabs() {
-  const current = activeTab();
-  $$('#screen-game [role="tab"]').forEach((tab) => {
-    const selected = tab.dataset.tab === current;
+  $$('.hunters-card [role="tab"]').forEach((tab) => {
+    const selected = tab.dataset.tab === state.tab;
     tab.setAttribute('aria-selected', String(selected));
     tab.tabIndex = selected ? 0 : -1;
   });
-  $('#panel-players').hidden = current !== 'players';
-  $('#panel-ranking').hidden = current !== 'ranking';
-  $('#panel-sheet').hidden = current !== 'sheet';
+  $('#panel-order').hidden = state.tab !== 'order';
+  $('#panel-ranking').hidden = state.tab !== 'ranking';
+  $('#panel-rounds').hidden = state.tab !== 'rounds';
 }
 
 function setTab(tab) {
-  if (!['players', 'ranking', 'sheet'].includes(tab)) return;
+  if (!['order', 'ranking', 'rounds'].includes(tab)) return;
   state.tab = tab;
   renderTabs();
-  $('#game-content').scrollTop = 0;
-  if (activeTab() === 'players') scrollCurrentIntoView();
-  if (activeTab() === 'sheet') {
-    const row = $('#sheet-wrap .is-current-round');
+  if (tab === 'rounds') {
+    const row = $('#rounds-wrap .is-current-round');
     if (row) row.scrollIntoView({ block: 'nearest' });
   }
 }
 
-function renderPlayerList(g, scores, ranking) {
-  const { totals, pending, statuses } = scores;
-  const rankById = new Map(ranking.map((row) => [row.id, row.rank]));
-  const lastById = new Map(); // dernière saisie qui compte
-  g.entries.forEach((e, i) => { if (statuses[i] === 'counted') lastById.set(e.p, e.v); });
-  const showRanks = g.entries.length > 0;
-
-  $('#player-list').innerHTML = g.players.map((p, i) => {
+function renderHunterList(g, scores) {
+  const { totals, pending } = scores;
+  $('#hunter-list').innerHTML = g.players.map((p, i) => {
     const isCurrent = i === g.current;
     const isTarget = i === g.target;
-    const rank = rankById.get(p.id);
-    const last = lastById.get(p.id);
-    const classes = ['player-card', isCurrent && 'is-current', isTarget && 'is-target'].filter(Boolean).join(' ');
-    const badges = [
-      isCurrent ? `<span class="badge badge-turn">${icon('star')}À son tour</span>` : '',
-      isTarget && !isCurrent ? '<span class="badge badge-target">Sélectionné</span>' : '',
-      showRanks ? `<span class="badge badge-rank" data-rank="${Math.min(rank, 4)}">${rankLabel(rank)}</span>` : '',
-      pending[p.id] < 0
-        ? `<span class="badge badge-pending" title="Compte seulement si la réponse est trouvée pendant ce tour">${formatSigned(pending[p.id])} en attente</span>`
-        : (last !== undefined ? `<span class="last-entry ${last < 0 ? 'is-neg' : 'is-pos'}">dernier : ${formatSigned(last)}</span>` : ''),
-    ].join('');
+    const classes = ['hunter-row', isCurrent && 'is-current', isTarget && 'is-target'].filter(Boolean).join(' ');
+    const waiting = pending[p.id] < 0
+      ? `<span class="badge-pending" title="Counts only if the bounty is found this turn">${formatSigned(pending[p.id])} pending</span>`
+      : '';
     return `
-      <li data-player-id="${escapeHtml(p.id)}">
-        <button type="button" class="${classes}" data-action="select-player" data-index="${i}" aria-pressed="${isTarget}"${isCurrent ? ' aria-current="true"' : ''}>
-          <span class="avatar" style="${colorVars(p.color)}" aria-hidden="true">${escapeHtml(initial(p.name))}</span>
-          <span class="player-main">
-            <span class="player-name">${escapeHtml(p.name)}</span>
-            <span class="player-meta">${badges}</span>
-          </span>
-          <span class="player-score">${formatNumber(totals[p.id])}</span>
+      <li>
+        <button type="button" class="${classes}" data-action="select-player" data-index="${i}" data-player-id="${escapeHtml(p.id)}" aria-pressed="${isTarget}"${isCurrent ? ' aria-current="true"' : ''}>
+          ${starIcon(p.color)}
+          <span class="hunter-name">${escapeHtml(p.name)}</span>
+          ${waiting}
+          <span class="score-pill">${formatNumber(totals[p.id])}</span>
         </button>
       </li>`;
   }).join('');
 }
 
-/** Ajoute à chaque ligne l'écart avec le premier. */
+/** Adds the gap to the leader to each row. */
 function withGaps(rows, hasScores) {
   const leader = rows[0] ? rows[0].score : 0;
   return rows.map((row) => {
     let gap = '';
-    if (hasScores) {
-      gap = row.rank === 1 ? 'En tête' : `à ${formatPoints(Math.abs(roundScore(row.score - leader)))}`;
-    }
+    if (hasScores) gap = row.rank === 1 ? 'Leading' : `${formatPoints(Math.abs(roundScore(row.score - leader)))} behind`;
     return { ...row, gap };
   });
 }
@@ -1015,23 +1041,19 @@ function rankingRowHtml(row) {
   return `
     <li class="rank-row${row.rank === 1 ? ' is-first' : ''}">
       <span class="rank-pos" data-rank="${Math.min(row.rank, 4)}">${row.rank}</span>
-      <span class="avatar avatar-sm" style="${colorVars(row.color)}" aria-hidden="true">${escapeHtml(initial(row.name))}</span>
+      ${starIcon(row.color)}
       <span class="rank-name">${escapeHtml(row.name)}${row.gap ? `<small>${escapeHtml(row.gap)}</small>` : ''}</span>
       <span class="rank-score">${formatNumber(row.score)}</span>
     </li>`;
 }
 
 function renderRanking(g, ranking) {
-  const rows = withGaps(ranking, g.entries.length > 0).map(rankingRowHtml).join('');
-  $('#ranking-rule').textContent = `${ruleLabel(g.winRule)} · mis à jour en direct`;
-  $('#ranking-list').innerHTML = rows;
-  // Panneau latéral (ordinateur)
-  $('#side-ranking-rule').textContent = g.winRule === 'low' ? 'le plus bas gagne' : 'le plus haut gagne';
-  $('#side-ranking-list').innerHTML = rows;
+  $('#ranking-rule').textContent = `${ruleLabel(g.winRule)} · live`;
+  $('#ranking-list').innerHTML = withGaps(ranking, g.entries.length > 0).map(rankingRowHtml).join('');
 }
 
-/** Feuille de score : une ligne par tour, une colonne par joueur. */
-function renderSheet(g, scores) {
+/** Score sheet: one row per round, one column per hunter. */
+function renderRounds(g, scores) {
   const { totals, statuses } = scores;
   const rounds = g.entries.reduce((max, e) => Math.max(max, e.r), g.round);
   const cells = new Map();
@@ -1040,10 +1062,10 @@ function renderSheet(g, scores) {
     if (!cells.has(key)) cells.set(key, []);
     cells.get(key).push({ v: e.v, status: statuses[i] });
   });
-  const STATUS_TITLES = { pending: 'En attente : compte si la réponse est trouvée', cancelled: 'Annulée : réponse non trouvée' };
+  const titles = { pending: 'Pending: counts if the bounty is found', cancelled: 'Cancelled: bounty not found' };
 
   const head = g.players.map((p) => `
-    <th scope="col"><span class="sheet-player"><span class="dot" style="${colorVars(p.color)}"></span><span class="sheet-name">${escapeHtml(p.name)}</span></span></th>`).join('');
+    <th scope="col"><span class="rounds-player">${starIcon(p.color)}<span>${escapeHtml(p.name)}</span></span></th>`).join('');
   const totalRow = g.players.map((p) => `<td>${formatNumber(totals[p.id])}</td>`).join('');
 
   let body = '';
@@ -1060,50 +1082,24 @@ function renderSheet(g, scores) {
       const showDetail = items.length > 1 || counted.length !== items.length;
       const detail = showDetail ? `<span class="cell-detail">${items.map((item) => (item.status === 'counted'
         ? formatSigned(item.v)
-        : `<span class="is-${item.status}" title="${STATUS_TITLES[item.status]}">${formatSigned(item.v)}</span>`)).join(' ')}</span>` : '';
+        : `<span class="is-${item.status}" title="${titles[item.status]}">${formatSigned(item.v)}</span>`)).join(' ')}</span>` : '';
       const cls = !counted.length ? 'is-void' : (sum < 0 ? 'is-neg' : 'is-pos');
       body += `<td class="${cls}"><span class="cell-sum">${counted.length ? formatSigned(sum) : '0'}</span>${detail}</td>`;
     });
     body += '</tr>';
   }
 
-  $('#sheet-note').textContent = !g.entries.length
-    ? 'Aucun point saisi pour l’instant.'
-    : `Points marqués à chaque tour (un tour = chaque joueur a joué une fois).${g.conditionalPenalties ? ' Valeurs barrées : pénalités annulées, réponse non trouvée.' : ''}`;
-  $('#sheet-wrap').innerHTML = `
-    <table class="sheet">
+  $('#rounds-note').textContent = !g.entries.length
+    ? 'No points yet.'
+    : `Points scored in each round.${g.conditionalPenalties ? ' Struck-through values: penalties cancelled (bounty not found).' : ''}`;
+  $('#rounds-wrap').innerHTML = `
+    <table class="rounds">
       <thead>
-        <tr><th scope="col">Tour</th>${head}</tr>
-        <tr class="sheet-totals"><th scope="row">Total</th>${totalRow}</tr>
+        <tr><th scope="col">Round</th>${head}</tr>
+        <tr class="rounds-totals"><th scope="row">Total</th>${totalRow}</tr>
       </thead>
       <tbody>${body}</tbody>
     </table>`;
-}
-
-function renderControls(g) {
-  const target = g.players[g.target];
-  $('#target-name').innerHTML = `<span class="dot" style="${colorVars(target.color)}"></span>${escapeHtml(target.name)}`;
-  $('#target-off-turn').hidden = g.target === g.current;
-  $('#undo-btn').disabled = g.entries.length === 0;
-  $('#prev-btn').disabled = g.round <= 1 && g.current === 0;
-  renderQuickGrid();
-}
-
-function renderQuickGrid() {
-  const values = state.quickButtons;
-  const count = values.length;
-  const cols = count <= 5 ? count : Math.min(5, Math.ceil(count / 2));
-  const grid = $('#quick-grid');
-  grid.style.setProperty('--cols', cols);
-  grid.innerHTML = values.map((v, i) => {
-    const label = formatSigned(v);
-    const long = label.length > 5 ? ' is-long' : '';
-    const verb = v > 0 ? 'Ajouter' : 'Retirer';
-    const key = i < 10 ? String((i + 1) % 10) : ''; // touches 1 à 9, puis 0
-    const shortcut = key ? ` aria-keyshortcuts="${key}"` : '';
-    const hint = key ? `<kbd class="kbd" aria-hidden="true">${key}</kbd>` : '';
-    return `<button type="button" class="quick-btn ${v < 0 ? 'is-neg' : 'is-pos'}${long}" data-action="add-points" data-value="${v}" aria-label="${verb} ${formatNumber(Math.abs(v))} points"${shortcut}>${hint}${label}</button>`;
-  }).join('');
 }
 
 function selectTarget(index) {
@@ -1111,34 +1107,57 @@ function selectTarget(index) {
   if (!g || !Number.isInteger(index) || index < 0 || index >= g.players.length || index === g.target) return;
   g.target = index;
   saveGame();
-  renderGame();
+  renderHunt();
 }
 
-function addPoints(value) {
+/** Chooses who gets the points with ↑ / ↓. */
+function moveTarget(delta) {
+  const g = state.game;
+  if (!g) return;
+  const count = g.players.length;
+  selectTarget((g.target + delta + count) % count);
+}
+
+function addBounty(key, pressedButton = null) {
+  const value = key === 'penalty' ? -state.bounties.penalty : state.bounties[key];
+  addPoints(value, key);
+  const button = pressedButton || (BOUNTY_TIERS.some((t) => t.key === key)
+    ? $(`#bounty-grid [data-key="${key}"]`)
+    : $(key === 'bonus' ? '#bonus-btn' : '#wrong-btn'));
+  if (button) {
+    button.classList.remove('is-pressed');
+    void button.offsetWidth;
+    button.classList.add('is-pressed');
+  }
+}
+
+function addPoints(value, category = 'custom') {
   const g = state.game;
   if (!g || !Number.isFinite(value) || value === 0) return;
   const player = g.players[g.target];
   const points = roundScore(value);
   const pendingBefore = computeScores(g).pending[player.id];
   const willWait = g.conditionalPenalties && points < 0 && !hasScoredThisTurn(g, player.id);
-  // k = tour de jeu de la saisie (sert aux pénalités conditionnelles)
-  g.entries.push({ p: player.id, v: points, r: g.round, k: turnIndex(g), t: Date.now() });
+  // k = turn of the entry (used by “wrong answers only count if the hunter finds”)
+  g.entries.push({ p: player.id, v: points, r: g.round, k: turnIndex(g), c: category, t: Date.now() });
   saveGame();
-  renderGame();
+  renderHunt();
   animateScore(player.id, points, willWait);
-  if (willWait) showToast(`${formatSigned(points)} pour ${player.name} · en attente`);
-  else if (points > 0 && pendingBefore < 0) showToast(`${formatSigned(points)} pour ${player.name} · pénalités appliquées (${formatSigned(pendingBefore)})`, 2600);
-  else showToast(`${formatSigned(points)} pour ${player.name}`);
+
+  const label = BOUNTY_TIERS.some((t) => t.key === category) ? ` · ${BOUNTY_LABELS[category]}` : '';
+  if (willWait) showToast(`${formatSigned(points)} for ${player.name} · pending`);
+  else if (points > 0 && pendingBefore < 0) showToast(`${formatSigned(points)} for ${player.name} · penalties applied (${formatSigned(pendingBefore)})`, 2600);
+  else showToast(`${formatSigned(points)} for ${player.name}${label}`);
 }
 
 function animateScore(playerId, value, pending = false) {
-  const card = $(`#player-list li[data-player-id="${CSS.escape(playerId)}"] .player-card`);
-  if (!card) return;
-  if (!pending) $('.player-score', card).classList.add('is-bumped');
+  const row = $(`#hunter-list .hunter-row[data-player-id="${CSS.escape(playerId)}"]`);
+  if (!row) return;
+  if (!pending) $('.score-pill', row).classList.add('is-bumped');
   const delta = document.createElement('span');
   delta.className = `float-delta ${pending ? 'is-pending' : (value < 0 ? 'is-neg' : 'is-pos')}`;
   delta.textContent = formatSigned(value);
-  card.append(delta);
+  row.append(delta);
   setTimeout(() => delta.remove(), 1000);
 }
 
@@ -1147,12 +1166,12 @@ function undoLastEntry() {
   if (!g || !g.entries.length) return;
   const entry = g.entries.pop();
   saveGame();
-  renderGame();
+  renderHunt();
   const player = g.players.find((p) => p.id === entry.p);
-  showToast(`Annulé : ${formatSigned(entry.v)} pour ${player ? player.name : '?'}`);
+  showToast(`Undone: ${formatSigned(entry.v)} for ${player ? player.name : '?'}`);
 }
 
-/** « Joueur suivant » (+1) ou « précédent » (−1). Un nouveau tour commence après le dernier joueur. */
+/** “Next hunter” (+1) or “previous” (−1). A new round starts after the last hunter. */
 function changeTurn(direction) {
   const g = state.game;
   if (!g) return;
@@ -1167,109 +1186,28 @@ function changeTurn(direction) {
     g.round -= 1;
   }
   const wasPaused = isPaused(g);
-  const cancelled = pendingPenalties(g); // réponse non trouvée : ces pénalités sont annulées
+  const cancelled = pendingPenalties(g); // bounty not found: these penalties are dropped
   g.current = next;
   g.target = next;
-  if (wasPaused) resumeClock(g); // passer au joueur suivant relance la partie
+  if (wasPaused) resumeClock(g); // moving on resumes the hunt
   resetTurnTimer(g);
   saveGame();
-  renderGame();
-  scrollCurrentIntoView();
+  renderHunt();
   const messages = [];
-  if (cancelled.length) messages.push(`Pénalités annulées : ${describePenalties(cancelled)}`);
-  if (wasPaused) messages.push('Chronomètre relancé');
+  if (cancelled.length) messages.push(`Penalties cancelled: ${describePenalties(cancelled)}`);
+  if (wasPaused) messages.push('Timer resumed');
   if (messages.length) showToast(messages.join(' · '), cancelled.length ? 3000 : 1800);
-}
-
-function scrollCurrentIntoView() {
-  if (activeTab() !== 'players') return;
-  const card = $('#player-list .player-card.is-current');
-  if (card) card.scrollIntoView({ block: 'nearest', behavior: prefersReducedMotion() ? 'auto' : 'smooth' });
-}
-
-
-/** Choisit le joueur qui reçoit les points avec ↑ / ↓. */
-function moveTarget(delta) {
-  const g = state.game;
-  if (!g) return;
-  const count = g.players.length;
-  selectTarget((g.target + delta + count) % count);
-  const card = $('#player-list .player-card.is-target');
-  if (card && activeTab() === 'players') card.scrollIntoView({ block: 'nearest' });
-}
-
-/** Bouton rapide déclenché au clavier : même effet qu'un clic, avec un retour visuel. */
-function pressQuickButton(index) {
-  const value = state.quickButtons[index];
-  if (value === undefined) return;
-  addPoints(value);
-  const button = $$('#quick-grid .quick-btn')[index];
-  if (button) button.classList.add('is-pressed');
-}
-
-function openShortcuts() {
-  openDialog($('#shortcuts-dialog'));
-}
-
-function isTypingTarget(target) {
-  return Boolean(target && target.closest && target.closest('input, textarea, select, [contenteditable="true"]'));
-}
-
-/** Les raccourcis ne servent que sur l'écran de partie, sans fenêtre ouverte ni champ en cours de saisie. */
-function isGameShortcutContext(event) {
-  return state.screen === 'game' && Boolean(state.game) && !$('dialog[open]') && !isTypingTarget(event.target);
-}
-
-/**
- * Raccourcis clavier de la partie. Renvoie true si la touche a été utilisée.
- * Les chiffres utilisent event.code (touche physique) : ils marchent aussi en AZERTY sans Maj.
- */
-function handleGameShortcut(event) {
-  if (!isGameShortcutContext(event) || event.altKey) return false;
-  const { key, code } = event;
-  const letter = key.length === 1 ? key.toLowerCase() : '';
-  const once = (fn) => {
-    if (!event.repeat) fn(); // touche maintenue : on n'enchaîne pas les joueurs
-    return true;
-  };
-
-  if (event.ctrlKey || event.metaKey) {
-    return letter === 'z' && !event.shiftKey ? once(undoLastEntry) : false;
-  }
-  // Sur un onglet choisi au clavier, ← et → changent d'onglet.
-  const onTab = event.target.getAttribute && event.target.getAttribute('role') === 'tab';
-  if (onTab && (key === 'ArrowLeft' || key === 'ArrowRight')) return false;
-
-  if (key === ' ' || key === 'ArrowRight') return once(() => changeTurn(1));
-  if (key === 'ArrowLeft') return once(() => changeTurn(-1));
-  if (key === 'ArrowUp') { moveTarget(-1); return true; }
-  if (key === 'ArrowDown') { moveTarget(1); return true; }
-  if (key === 'Backspace' || key === 'Delete') return once(undoLastEntry);
-
-  const digit = /^Digit(\d)$/.exec(code);
-  if (digit) {
-    const index = (Number(digit[1]) + 9) % 10; // 1 → 1er bouton … 0 → 10e bouton
-    if (index < state.quickButtons.length) return once(() => pressQuickButton(index));
-  }
-  if (/^Numpad\d$/.test(code) && /^\d$/.test(key)) return once(() => openCustomDialog({ text: key }));
-  if (key === '+') return once(() => openCustomDialog({ sign: 1 }));
-  if (key === '-' || key === '−') return once(() => openCustomDialog({ sign: -1 }));
-  if (letter === 's') return once(() => openCustomDialog());
-  if (letter === 'p') return once(togglePause);
-  if (key === '?' || letter === 'h') return once(openShortcuts);
-  return false;
 }
 
 
 /* =============================================================================
-   7. Chronomètre, minuteur par tour, alarme, Wake Lock
+   8. Timer, alarm, wake lock
    -----------------------------------------------------------------------------
-   Les temps sont calculés à partir d'horodatages (Date.now()) et non en
-   comptant des « ticks » : ils restent justes même si le téléphone se met en
-   veille ou si la page est rechargée.
-     clock     = { accMs, since }   temps cumulé + début de la période en cours
+   Times are computed from timestamps (Date.now()), not by counting ticks: they
+   stay right if the phone sleeps or the page is reloaded.
+     clock     = { accMs, since }   time already counted + start of the current run
      turnTimer = { enabled, durationMs, accMs, since, expired }
-   since === null signifie « en pause ».
+   since === null means “paused”.
    ========================================================================== */
 
 const isPaused = (g) => g.clock.since == null;
@@ -1303,48 +1241,92 @@ function togglePause() {
   if (isPaused(g)) resumeClock(g);
   else pauseClock(g);
   saveGame();
-  renderGame();
+  renderTimerControls();
+  tick();
 }
 
 function restartTurnTimer() {
   const g = state.game;
-  if (!g) return;
+  if (!g || !g.turnTimer.enabled) return;
   resetTurnTimer(g);
   saveGame();
-  renderGame();
+  tick();
 }
 
-/** Mis à jour 4 fois par seconde : affichage des temps et détection de la fin du tour. */
+/** Changes the round timer during a hunt (it restarts if the duration changes). */
+function setGameTurnTimer({ enabled, seconds, custom }) {
+  const g = state.game;
+  if (!g) return;
+  const timer = g.turnTimer;
+  const durationMs = seconds * 1000;
+  const changed = enabled !== timer.enabled || durationMs !== timer.durationMs;
+  timer.enabled = enabled;
+  timer.durationMs = durationMs;
+  timer.custom = custom;
+  if (changed) {
+    if (enabled) resetTurnTimer(g);
+    else timer.expired = false;
+  }
+  state.setup.turnTimer = normalizeTurnTimer({ enabled, seconds }); // kept for the next hunt
+  saveSetup();
+  saveGame();
+  tick();
+}
+
+function renderTimerControls() {
+  const g = state.game;
+  if (!g) return;
+  const paused = isPaused(g);
+  const pauseBtn = $('#pause-btn');
+  pauseBtn.innerHTML = icon(paused ? 'play' : 'pause');
+  pauseBtn.setAttribute('aria-label', paused ? 'Resume' : 'Pause');
+  const soundBtn = $('#sound-btn');
+  soundBtn.innerHTML = icon(state.prefs.sound ? 'volume' : 'volume-off');
+  soundBtn.setAttribute('aria-label', state.prefs.sound ? 'Sound on (tap to mute)' : 'Sound off (tap to turn on)');
+  soundBtn.setAttribute('aria-pressed', String(state.prefs.sound));
+  dom.timer.classList.toggle('is-paused', paused);
+}
+
+/** Runs 4 times per second: time display, ring, end of the round. */
 function tick() {
   const g = state.game;
   if (!g) return;
   const now = Date.now();
-  dom.clock.textContent = formatClock(gameElapsed(g, now));
-
   const timer = g.turnTimer;
+  const huntTime = formatClock(gameElapsed(g, now));
+
   if (!timer.enabled) {
-    dom.screenGame.classList.remove('is-expired');
+    dom.timerTime.textContent = huntTime;
+    dom.timerCaption.textContent = 'Hunt time';
+    dom.timer.classList.add('is-off');
+    dom.timer.classList.remove('is-warning', 'is-expired');
     return;
   }
+
   const elapsed = turnElapsed(g, now);
   const remaining = Math.max(0, timer.durationMs - elapsed);
-
   if (remaining === 0 && !timer.expired) {
     timer.expired = true;
     saveGame();
     triggerAlarm(elapsed - timer.durationMs > ALARM_GRACE_MS);
   }
 
-  dom.timerText.textContent = timer.expired ? 'Temps écoulé !' : formatCountdown(remaining);
-  dom.timerFill.style.transform = `scaleX(${remaining / timer.durationMs})`;
-  dom.turnTimer.classList.toggle('is-warning', !timer.expired && remaining <= Math.min(10000, timer.durationMs * 0.25));
-  dom.turnTimer.classList.toggle('is-expired', timer.expired);
-  dom.screenGame.classList.toggle('is-expired', timer.expired);
+  const fraction = remaining / timer.durationMs;
+  dom.timerTime.textContent = formatCountdown(remaining);
+  dom.timerCaption.textContent = timer.expired ? 'Time’s up!' : `Hunt ${huntTime}`;
+  dom.timerProgress.style.strokeDasharray = `${(fraction * 100).toFixed(2)} 100`;
+  // Knob at the end of the arc: the gauge goes from 150° to 390° (open at the bottom)
+  const angle = ((150 + 240 * fraction) * Math.PI) / 180;
+  dom.timerKnob.setAttribute('cx', (100 + 80 * Math.cos(angle)).toFixed(2));
+  dom.timerKnob.setAttribute('cy', (100 + 80 * Math.sin(angle)).toFixed(2));
+  dom.timer.classList.remove('is-off');
+  dom.timer.classList.toggle('is-warning', !timer.expired && remaining <= Math.min(10000, timer.durationMs * 0.25));
+  dom.timer.classList.toggle('is-expired', timer.expired);
 }
 
 let tickInterval = null;
 
-/** Démarre/arrête le chronomètre et le maintien de l'écran selon qu'une partie existe. */
+/** Starts/stops the timer loop and the wake lock depending on whether a hunt exists. */
 function syncRuntime() {
   if (state.game) {
     if (!tickInterval) tickInterval = setInterval(tick, 250);
@@ -1356,14 +1338,14 @@ function syncRuntime() {
   }
 }
 
-/* --- Alarme : signal visuel + son (Web Audio) + vibration --------------- */
+/* --- Alarm: visual signal + sound (Web Audio) + vibration ---------------- */
 
 function triggerAlarm(silent) {
-  if (silent) return; // expiré pendant que la page était fermée : signal visuel seulement
+  if (silent) return; // ran out while the page was closed: visual signal only
   flashScreen();
   if (state.prefs.sound) playBeeps(ALARM_BEEPS);
   if ('vibrate' in navigator) {
-    try { navigator.vibrate(ALARM_VIBRATION); } catch { /* non pris en charge */ }
+    try { navigator.vibrate(ALARM_VIBRATION); } catch { /* not supported */ }
   }
 }
 
@@ -1387,10 +1369,7 @@ function getAudioContext() {
   return audioContext;
 }
 
-/**
- * Les navigateurs mobiles (iOS surtout) n'autorisent le son qu'après un geste.
- * On « déverrouille » l'audio au premier toucher, si un minuteur sonore est actif.
- */
+/** Mobile browsers (iOS above all) only allow sound after a tap: unlock it early. */
 function primeAudio() {
   const g = state.game;
   if (!g || !g.turnTimer.enabled || !state.prefs.sound) return;
@@ -1402,7 +1381,7 @@ function primeAudio() {
     source.buffer = ctx.createBuffer(1, 1, 22050);
     source.connect(ctx.destination);
     source.start(0);
-  } catch { /* ignoré */ }
+  } catch { /* ignored */ }
 }
 
 function playBeeps(pattern) {
@@ -1426,7 +1405,19 @@ function playBeeps(pattern) {
   });
 }
 
-/* --- Garder l'écran allumé (Screen Wake Lock API) ----------------------- */
+function setSoundPref(enabled) {
+  state.prefs.sound = enabled;
+  savePrefs();
+  if (enabled) playBeeps([[0, 0.12, 880]]); // short test beep
+  renderTimerControls();
+}
+
+function toggleSound() {
+  setSoundPref(!state.prefs.sound);
+  showToast(state.prefs.sound ? 'Sound on' : 'Sound off');
+}
+
+/* --- Keep the screen on (Screen Wake Lock API) --------------------------- */
 
 let wakeLock = null;
 let wakeLockPending = false;
@@ -1446,7 +1437,7 @@ async function requestWakeLock() {
       });
     }
   } catch {
-    wakeLock = null; // refusé (économie d'énergie, onglet masqué…)
+    wakeLock = null; // refused (battery saver, hidden tab…)
   } finally {
     wakeLockPending = false;
   }
@@ -1462,36 +1453,32 @@ function releaseWakeLock() {
 function getWakeLockStatus() {
   if (!('wakeLock' in navigator)) {
     return window.isSecureContext
-      ? 'Ce navigateur ne sait pas garder l’écran allumé : pensez à régler la mise en veille du téléphone.'
-      : 'Pour garder l’écran allumé, le site doit être ouvert en HTTPS.';
+      ? 'This browser can’t keep the screen on: check your phone’s sleep setting.'
+      : 'To keep the screen on, the site must be opened over HTTPS.';
   }
   return wakeLock
-    ? 'L’écran reste allumé pendant la partie.'
-    : 'Maintien de l’écran allumé indisponible pour le moment (mode économie d’énergie ?).';
+    ? 'The screen stays on during the hunt.'
+    : 'Keeping the screen on isn’t available right now (battery saver?).';
 }
 
 
 /* =============================================================================
-   8. Dialogues
+   9. Dialogs
    ========================================================================== */
 
 function openDialog(dialog) {
   if (!dialog.open) dialog.showModal();
 }
 
-function closeAllDialogs() {
-  $$('dialog[open]').forEach((dialog) => dialog.close('cancel'));
-}
-
-/** Confirmation : renvoie une promesse résolue avec true (OK) ou false. */
-function confirmDialog({ title, message, confirmLabel = 'Confirmer', danger = false }) {
+/** Confirmation: resolves with true (OK) or false. */
+function confirmDialog({ title, message, confirmLabel = 'OK', danger = false }) {
   const dialog = $('#confirm-dialog');
   const ok = $('#confirm-ok');
   $('#confirm-title').textContent = title;
   $('#confirm-message').textContent = message;
   ok.textContent = confirmLabel;
-  ok.classList.toggle('btn-danger', danger);
-  ok.classList.toggle('btn-primary', !danger);
+  ok.classList.toggle('pill-btn-minus', danger);
+  ok.classList.toggle('pill-btn-sand', !danger);
   dialog.returnValue = '';
   return new Promise((resolve) => {
     dialog.addEventListener('close', () => resolve(dialog.returnValue === 'ok'), { once: true });
@@ -1499,7 +1486,7 @@ function confirmDialog({ title, message, confirmLabel = 'Confirmer', danger = fa
   });
 }
 
-/* --- Saisie libre -------------------------------------------------------- */
+/* --- Custom points ------------------------------------------------------- */
 
 function openCustomDialog({ sign = 1, text = '' } = {}) {
   const g = state.game;
@@ -1520,12 +1507,12 @@ function renderCustomTargets() {
   $('#custom-targets').innerHTML = g.players.map((p, i) => {
     const selected = i === state.customTarget;
     return `<button type="button" class="target-chip${selected ? ' is-selected' : ''}" data-action="custom-target" data-index="${i}" data-keep-focus aria-pressed="${selected}">
-      <span class="dot" style="${colorVars(p.color)}"></span>${escapeHtml(p.name)}</button>`;
+      ${starIcon(p.color)}${escapeHtml(p.name)}</button>`;
   }).join('');
 }
 
 function onCustomInput(input) {
-  // Un « - » ou « + » tapé au clavier change le signe ; le champ garde la valeur absolue.
+  // A typed “-” or “+” switches the sign; the field keeps the absolute value.
   if (/[-−–]/.test(input.value)) state.customSign = -1;
   else if (input.value.includes('+')) state.customSign = 1;
   const cleaned = input.value.replace(/[-−–+]/g, '');
@@ -1550,25 +1537,25 @@ function updateCustomPreview() {
   const value = getCustomValue();
   const submit = $('#custom-submit');
   submit.disabled = value === null;
-  submit.classList.toggle('btn-plus', !negative);
-  submit.classList.toggle('btn-minus', negative);
+  submit.classList.toggle('pill-btn-plus', !negative);
+  submit.classList.toggle('pill-btn-minus', negative);
   submit.textContent = value === null
-    ? (negative ? 'Retirer' : 'Ajouter')
-    : `${negative ? 'Retirer' : 'Ajouter'} ${formatNumber(Math.abs(value))}`;
+    ? (negative ? 'Remove' : 'Add')
+    : `${negative ? 'Remove' : 'Add'} ${formatNumber(Math.abs(value))}`;
 
   const player = g.players[state.customTarget];
   const { totals, pending } = computeScores(g);
   const total = totals[player.id];
   const waiting = pending[player.id];
-  let preview = `${player.name} : ${formatNumber(total)}`;
+  let preview = `${player.name}: ${formatNumber(total)}`;
   if (value !== null && g.conditionalPenalties && value < 0 && !hasScoredThisTurn(g, player.id)) {
-    preview += ` · ${formatSigned(roundScore(waiting + value))} en attente (compte si la réponse est trouvée)`;
+    preview += ` · ${formatSigned(roundScore(waiting + value))} pending (counts if the bounty is found)`;
   } else if (value !== null) {
-    const applied = value > 0 ? waiting : 0; // une bonne réponse applique les pénalités en attente
+    const applied = value > 0 ? waiting : 0; // scoring applies the pending penalties
     preview += ` → ${formatNumber(roundScore(total + value + applied))}`;
-    if (applied < 0) preview += ` (pénalités ${formatSigned(applied)} comprises)`;
+    if (applied < 0) preview += ` (incl. ${formatSigned(applied)} penalties)`;
   } else if (waiting < 0) {
-    preview += ` · ${formatSigned(waiting)} en attente`;
+    preview += ` · ${formatSigned(waiting)} pending`;
   }
   $('#custom-preview').textContent = preview;
 }
@@ -1595,156 +1582,95 @@ function submitCustomValue() {
   }
   g.target = state.customTarget;
   $('#custom-dialog').close('ok');
-  addPoints(value);
+  addPoints(value, 'custom');
 }
 
-/* --- Boutons rapides ----------------------------------------------------- */
+/* --- Bounty values ------------------------------------------------------- */
 
-function quickRowHtml(value) {
-  const negative = value < 0;
-  const shown = value ? numberToInput(Math.abs(value)) : '';
-  return `
-    <li class="quick-edit-row ${negative ? 'is-neg' : 'is-pos'}">
-      <button type="button" class="sign-btn" data-action="quick-toggle-sign" data-keep-focus aria-label="Inverser : ajouter ou retirer">${negative ? '−' : '+'}</button>
-      <input class="input" type="text" inputmode="decimal" autocomplete="off" value="${escapeHtml(shown)}" placeholder="Valeur" aria-label="Valeur du bouton">
-      <button type="button" class="icon-btn icon-btn-danger" data-action="quick-remove-row" aria-label="Supprimer ce bouton">${icon('trash')}</button>
-    </li>`;
+function renderBountyFields(values) {
+  const fields = [
+    ...BOUNTY_TIERS.map((t) => ({ key: t.key, label: t.label, swatch: `tier-${t.key}` })),
+    { key: 'bonus', label: 'Bonus', swatch: '' },
+    { key: 'penalty', label: 'Wrong answer', swatch: 'tier-difficult', negative: true },
+  ];
+  $('#bounty-fields').innerHTML = fields.map((f) => `
+    <label class="bounty-field">
+      <span class="bounty-field-label"><span class="bounty-swatch ${f.swatch}"${f.swatch ? '' : ' style="--t1:#FBE3C8;--t2:#F8C787"'}></span>${f.label}</span>
+      <span class="${f.negative ? 'bounty-field-sign' : ''}">
+        <input class="input" type="text" inputmode="decimal" autocomplete="off" data-bounty-key="${f.key}" value="${escapeHtml(String(values[f.key]))}" aria-label="${f.label} points">
+      </span>
+    </label>`).join('');
 }
 
-function renderQuickEditRows(values) {
-  $('#quick-edit-list').innerHTML = values.map(quickRowHtml).join('');
-  updateQuickAddButton();
-}
-
-function updateQuickAddButton() {
-  $('#quick-add-btn').disabled = $$('#quick-edit-list .quick-edit-row').length >= MAX_QUICK_BUTTONS;
-}
-
-function setQuickMessage(text, isError = false) {
-  const message = $('#quick-message');
+function setBountyMessage(text, isError = false) {
+  const message = $('#bounty-message');
   message.textContent = text;
   message.classList.toggle('is-error', isError);
 }
 
-function openQuickDialog() {
-  renderQuickEditRows(state.quickButtons);
-  setQuickMessage('');
-  openDialog($('#quick-dialog'));
+function openBountyDialog() {
+  renderBountyFields(state.bounties);
+  setBountyMessage('');
+  openDialog($('#bounty-dialog'));
 }
 
-function setRowSign(row, negative) {
-  row.classList.toggle('is-neg', negative);
-  row.classList.toggle('is-pos', !negative);
-  $('.sign-btn', row).textContent = negative ? '−' : '+';
+function resetBountyFields() {
+  renderBountyFields(DEFAULT_BOUNTIES);
+  setBountyMessage('Default values restored: press “Save” to keep them.');
 }
 
-function onQuickRowInput(input) {
-  const row = input.closest('.quick-edit-row');
-  if (/[-−–]/.test(input.value)) setRowSign(row, true);
-  else if (input.value.includes('+')) setRowSign(row, false);
-  const cleaned = input.value.replace(/[-−–+]/g, '');
-  if (cleaned !== input.value) input.value = cleaned;
-  input.removeAttribute('aria-invalid');
-}
-
-function addQuickRow() {
-  const list = $('#quick-edit-list');
-  if (list.children.length >= MAX_QUICK_BUTTONS) return;
-  list.insertAdjacentHTML('beforeend', quickRowHtml(0));
-  updateQuickAddButton();
-  setQuickMessage('');
-  $('input', list.lastElementChild).focus();
-}
-
-function removeQuickRow(button) {
-  button.closest('.quick-edit-row').remove();
-  updateQuickAddButton();
-}
-
-function resetQuickRows() {
-  renderQuickEditRows(DEFAULT_QUICK_BUTTONS);
-  setQuickMessage('Valeurs par défaut rétablies : touchez « Enregistrer » pour confirmer.');
-}
-
-function saveQuickDialog() {
-  const values = [];
+function saveBountyDialog() {
+  const next = {};
   let firstInvalid = null;
-  $$('#quick-edit-list .quick-edit-row').forEach((row) => {
-    const input = $('input', row);
-    if (!input.value.trim()) return; // ligne vide : ignorée
-    const abs = parseNumber(input.value);
-    const valid = Number.isFinite(abs) && abs > 0 && abs <= MAX_POINTS;
+  $$('#bounty-fields input[data-bounty-key]').forEach((input) => {
+    const value = parseNumber(input.value.replace(/[-−–+]/g, ''));
+    const valid = Number.isFinite(value) && value > 0 && value <= MAX_POINTS;
     input.setAttribute('aria-invalid', valid ? 'false' : 'true');
-    if (!valid) {
-      firstInvalid = firstInvalid || input;
-      return;
-    }
-    values.push(row.classList.contains('is-neg') ? -abs : abs);
+    if (!valid) firstInvalid = firstInvalid || input;
+    else next[input.dataset.bountyKey] = value;
   });
-
   if (firstInvalid) {
-    setQuickMessage('Valeur incorrecte : saisissez un nombre différent de 0.', true);
+    setBountyMessage('Each value must be a number greater than 0.', true);
     firstInvalid.focus();
     return;
   }
-  const clean = sanitizeQuickButtons(values);
-  if (!clean) {
-    setQuickMessage('Gardez au moins un bouton.', true);
-    return;
-  }
-  state.quickButtons = clean;
-  saveQuickButtons();
-  if (state.game) renderQuickGrid();
-  $('#quick-dialog').close('ok');
-  showToast('Boutons rapides enregistrés');
+  state.bounties = { ...DEFAULT_BOUNTIES, ...next };
+  saveBounties();
+  $('#bounty-dialog').close('ok');
+  if (state.route === 'new') renderSetupBounty();
+  if (state.route === 'hunt') renderHunt();
+  showToast('Bounty values saved');
 }
 
-/* --- Menu de la partie --------------------------------------------------- */
+/* --- Hunt settings and shortcuts ----------------------------------------- */
 
-function openMenu() {
+function openSettings() {
   const g = state.game;
   if (!g) return;
-  renderTimerPicker('menu');
-  $('#pref-sound').checked = state.prefs.sound;
-  $('#menu-conditional').checked = Boolean(g.conditionalPenalties);
+  renderTimerSetting('settings', { force: true });
+  setTimerHelp($('#settings-timer'), null);
+  $('#settings-conditional').checked = Boolean(g.conditionalPenalties);
+  $('#settings-sound').checked = state.prefs.sound;
   $('#wake-status').textContent = getWakeLockStatus();
-  openDialog($('#menu-dialog'));
+  openDialog($('#settings-dialog'));
 }
 
-/** Change le minuteur en cours de partie (il repart de zéro si la durée change). */
-function setGameTurnTimer({ enabled, seconds, custom }) {
-  const g = state.game;
-  if (!g) return;
-  const timer = g.turnTimer;
-  const durationMs = seconds * 1000;
-  const changed = enabled !== timer.enabled || durationMs !== timer.durationMs;
-  timer.enabled = enabled;
-  timer.durationMs = durationMs;
-  timer.custom = custom;
-  if (changed) {
-    if (enabled) resetTurnTimer(g);
-    else timer.expired = false;
-  }
-  state.setup.turnTimer = normalizeTurnTimer({ enabled, seconds, custom }); // gardé pour la prochaine partie
-  saveSetup();
-  saveGame();
-  renderGame();
+function shortcutsHtml() {
+  return SHORTCUTS.map(([keys, action]) => `<div><dt>${keys}</dt><dd>${action}</dd></div>`).join('');
 }
 
-function setSoundPref(enabled) {
-  state.prefs.sound = enabled;
-  savePrefs();
-  if (enabled) playBeeps([[0, 0.12, 880]]); // petit bip de test
+function openShortcuts() {
+  openDialog($('#shortcuts-dialog'));
 }
 
 
 /* =============================================================================
-   9. Fin de partie, résultats et historique
+   10. End of hunt, results and history
    ========================================================================== */
 
-/** Résumé compact d'une partie, tel qu'il est enregistré dans l'historique. */
+/** Compact summary of a hunt, as saved in the history. */
 function buildResult(game, now = Date.now()) {
-  const totals = getTotals(game, { finished: true }); // pénalités encore en attente = annulées
+  const totals = getTotals(game, { finished: true }); // pending penalties = cancelled
   const ranking = computeRanking(game, totals);
   const rankById = new Map(ranking.map((row) => [row.id, row.rank]));
   const lastEntryRound = game.entries.reduce((max, e) => Math.max(max, e.r), 0);
@@ -1758,19 +1684,11 @@ function buildResult(game, now = Date.now()) {
     rounds,
     winRule: game.winRule,
     conditionalPenalties: Boolean(game.conditionalPenalties),
-    orderMode: game.orderMode,
     turnTimer: {
       enabled: Boolean(game.turnTimer.enabled),
       seconds: Math.round(game.turnTimer.durationMs / 1000),
-      custom: Boolean(game.turnTimer.custom),
     },
-    players: game.players.map((p) => ({
-      name: p.name,
-      slot: p.slot,
-      color: p.color,
-      score: totals[p.id],
-      rank: rankById.get(p.id),
-    })),
+    players: game.players.map((p) => ({ name: p.name, color: p.color, score: totals[p.id], rank: rankById.get(p.id) })),
     winners: ranking.filter((row) => row.rank === 1).map((row) => row.name),
   };
 }
@@ -1787,12 +1705,12 @@ async function endGame() {
   const hasScores = g.entries.length > 0;
   const waiting = pendingPenalties(g);
   const confirmed = await confirmDialog({
-    title: 'Terminer la partie ?',
+    title: 'End the hunt?',
     message: (hasScores
-      ? 'Le classement final sera affiché et la partie enregistrée dans l’historique.'
-      : 'Aucun point n’a été saisi : la partie ne sera pas enregistrée dans l’historique.')
-      + (waiting.length ? ` Les pénalités en attente (${describePenalties(waiting)}) seront annulées.` : ''),
-    confirmLabel: 'Terminer',
+      ? 'The final ranking will be shown and the hunt saved in the history.'
+      : 'No points were scored: this hunt won’t be saved in the history.')
+      + (waiting.length ? ` Pending penalties (${describePenalties(waiting)}) will be cancelled.` : ''),
+    confirmLabel: 'End game',
   });
   if (!confirmed || !state.game) return;
 
@@ -1804,23 +1722,23 @@ async function endGame() {
   }
   state.lastResult = { ...result, saved: hasScores };
   discardGame();
-  showScreen('results');
+  navigate('results');
 }
 
 async function abandonGame() {
   const g = state.game;
   if (!g) return;
   const confirmed = await confirmDialog({
-    title: 'Abandonner la partie ?',
-    message: 'Les scores de cette partie seront perdus et elle ne sera pas enregistrée dans l’historique.',
-    confirmLabel: 'Abandonner',
+    title: 'Abandon the hunt?',
+    message: 'Scores from this hunt will be lost and it won’t be saved in the history.',
+    confirmLabel: 'Abandon',
     danger: true,
   });
   if (!confirmed || !state.game) return;
   prefillSetup(buildResult(g));
   discardGame();
-  showScreen('setup');
-  showToast('Partie abandonnée');
+  navigate('new');
+  showToast('Hunt abandoned');
 }
 
 function sortedByRank(players) {
@@ -1835,22 +1753,22 @@ function renderResults() {
   const ranked = sortedByRank(result.players);
   const winners = ranked.filter((p) => p.rank === 1);
 
-  // Affiche « WANTED » : le gagnant, et sa prime (son score).
+  // WANTED poster: the winner, with their score as the bounty.
   let kicker;
   let name;
   let text;
   if (!result.saved) {
-    kicker = 'Partie terminée';
-    name = 'Aucun gagnant';
-    text = 'Aucun point n’a été saisi : la partie n’est pas enregistrée.';
+    kicker = 'Hunt over';
+    name = 'No winner';
+    text = 'No points were scored: this hunt isn’t saved.';
   } else if (winners.length === 1) {
-    kicker = 'Vainqueur de la partie';
+    kicker = 'Winner of the hunt';
     name = winners[0].name;
-    text = `${winners[0].name} remporte la partie !`;
+    text = `${winners[0].name} wins the hunt!`;
   } else {
-    kicker = `Égalité entre ${winners.length} joueurs`;
+    kicker = `Tie between ${winners.length} hunters`;
     name = joinNames(winners.map((w) => w.name));
-    text = 'Égalité ! La prime est partagée.';
+    text = 'It’s a tie! The bounty is shared.';
   }
   const title = $('#results-title');
   $('#results-kicker').textContent = kicker;
@@ -1862,18 +1780,17 @@ function renderResults() {
 
   $('#final-ranking').innerHTML = withGaps(ranked, result.saved).map(rankingRowHtml).join('');
   $('#results-meta').innerHTML = [
-    `${icon('timer')}${formatDuration(result.durationMs)}`,
-    `${icon('flag')}${plural(result.rounds, 'tour')}`,
-    `${icon('trophy')}${result.winRule === 'low' ? 'Le plus bas gagne' : 'Le plus haut gagne'}`,
-    `${icon('history')}${result.saved ? 'Enregistrée' : 'Non enregistrée'}`,
+    `${icon('stopwatch')}${formatDuration(result.durationMs)}`,
+    `${icon('flag')}${plural(result.rounds, 'round')}`,
+    `${icon('trophy')}${result.winRule === 'low' ? 'Lowest wins' : 'Highest wins'}`,
+    `${icon('saved')}${result.saved ? 'Saved' : 'Not saved'}`,
   ].map((content) => `<span class="pill">${content}</span>`).join('');
 }
 
 function renderHistory() {
   const history = state.history;
   $('#history-empty').hidden = history.length > 0;
-  $('#clear-history-btn').hidden = history.length === 0;
-  $('#history-back-label').textContent = state.game ? 'Partie' : 'Retour';
+  $('#history-tools').hidden = history.length === 0;
 
   $('#history-list').innerHTML = history.map((h) => {
     const ranked = sortedByRank(h.players);
@@ -1881,28 +1798,26 @@ function renderHistory() {
       ? h.winners
       : ranked.filter((p) => p.rank === 1).map((p) => p.name);
     const winnerScore = ranked[0] ? ranked[0].score : 0;
-    const winnerText = winners.length > 1
-      ? `Égalité : ${joinNames(winners)}`
-      : `${winners[0] || '—'} gagne`;
+    const winnerText = winners.length > 1 ? `Tie: ${joinNames(winners)}` : `${winners[0] || '—'} wins`;
     const scores = ranked.map((p) => `
       <li>
-        <span class="rank-pos rank-pos-sm" data-rank="${Math.min(p.rank, 4)}">${p.rank}</span>
-        <span class="dot" style="${colorVars(p.color)}"></span>
+        <span class="rank-pos" data-rank="${Math.min(p.rank, 4)}">${p.rank}</span>
+        ${starIcon(p.color)}
         <span class="history-name">${escapeHtml(p.name)}</span>
         <span class="history-score">${formatNumber(p.score)}</span>
       </li>`).join('');
-    const rounds = Number.isFinite(h.rounds) ? ` · ${plural(h.rounds, 'tour')}` : '';
+    const rounds = Number.isFinite(h.rounds) ? ` · ${plural(h.rounds, 'round')}` : '';
     return `
       <li class="card history-item">
         <div class="history-head">
           <time datetime="${new Date(h.endedAt).toISOString()}">${escapeHtml(formatDate(h.endedAt))}</time>
-          <span class="history-meta">Durée ${formatDuration(h.durationMs || 0)}${rounds} · ${h.winRule === 'low' ? 'plus bas gagne' : 'plus haut gagne'}</span>
+          <span class="history-meta">${formatDuration(h.durationMs || 0)}${rounds} · ${h.winRule === 'low' ? 'lowest wins' : 'highest wins'}</span>
         </div>
         <p class="history-winner">${icon('trophy')}<span>${escapeHtml(winnerText)} · ${formatPoints(winnerScore)}</span></p>
         <ol class="history-scores">${scores}</ol>
         <div class="history-actions">
-          <button type="button" class="btn btn-secondary btn-sm" data-action="replay-history" data-id="${escapeHtml(h.id)}">${icon('restart')}<span>Rejouer</span></button>
-          <button type="button" class="btn btn-ghost btn-sm text-danger" data-action="delete-history" data-id="${escapeHtml(h.id)}">${icon('trash')}<span>Supprimer</span></button>
+          <button type="button" class="pill-btn" data-action="replay-history" data-id="${escapeHtml(h.id)}">${icon('restart')}<span>Play again</span></button>
+          <button type="button" class="pill-btn pill-btn-danger" data-action="delete-history" data-id="${escapeHtml(h.id)}">${icon('trash')}<span>Delete</span></button>
         </div>
       </li>`;
   }).join('');
@@ -1912,41 +1827,39 @@ async function deleteHistoryItem(id) {
   const item = state.history.find((h) => h.id === id);
   if (!item) return;
   const confirmed = await confirmDialog({
-    title: 'Supprimer cette partie ?',
-    message: `La partie du ${formatDate(item.endedAt, false)} sera définitivement supprimée de l’historique.`,
-    confirmLabel: 'Supprimer',
+    title: 'Delete this hunt?',
+    message: `The hunt of ${formatDate(item.endedAt)} will be permanently removed from the history.`,
+    confirmLabel: 'Delete',
     danger: true,
   });
   if (!confirmed) return;
   state.history = state.history.filter((h) => h.id !== id);
   saveHistory();
   renderHistory();
-  showToast('Partie supprimée');
+  showToast('Hunt deleted');
 }
 
 async function clearHistory() {
   if (!state.history.length) return;
   const confirmed = await confirmDialog({
-    title: 'Effacer tout l’historique ?',
-    message: `${plural(state.history.length, 'partie')} ${state.history.length > 1 ? 'seront supprimées' : 'sera supprimée'} définitivement.`,
-    confirmLabel: 'Tout effacer',
+    title: 'Clear the whole history?',
+    message: `${plural(state.history.length, 'hunt')} will be permanently deleted.`,
+    confirmLabel: 'Clear all',
     danger: true,
   });
   if (!confirmed) return;
   state.history = [];
   saveHistory();
   renderHistory();
-  showToast('Historique effacé');
+  showToast('History cleared');
 }
 
-/** « Rejouer avec les mêmes joueurs » : configuration pré-remplie, prête à lancer. */
+/** “Play again”: New game form filled with the same hunters and settings. */
 function replay(record) {
   if (!record) return;
   prefillSetup(record);
-  showScreen('setup');
-  showToast(record.orderMode === 'manual'
-    ? 'Mêmes joueurs et réglages : vérifiez puis « Commencer ».'
-    : 'Mêmes joueurs, nouveau tirage de l’ordre : prêt à commencer !', 3500);
+  navigate('new');
+  showToast('Same hunters and settings: shuffle if you like, then start the hunt!', 3500);
 }
 
 async function replayFromHistory(id) {
@@ -1954,9 +1867,9 @@ async function replayFromHistory(id) {
   if (!item) return;
   if (state.game) {
     const confirmed = await confirmDialog({
-      title: 'Une partie est en cours',
-      message: 'Pour rejouer cette partie, la partie en cours sera abandonnée (sans être enregistrée).',
-      confirmLabel: 'Abandonner et rejouer',
+      title: 'A hunt is in progress',
+      message: 'To play this hunt again, the current hunt will be abandoned (without saving it).',
+      confirmLabel: 'Abandon and replay',
       danger: true,
     });
     if (!confirmed) return;
@@ -1965,55 +1878,61 @@ async function replayFromHistory(id) {
   replay(item);
 }
 
-/** « Nouvelle partie » : même nombre de joueurs et mêmes réglages, prénoms vides. */
-function newGame() {
-  const s = state.setup;
-  s.names = Array(MAX_PLAYERS).fill('');
-  s.order = s.orderMode === 'random' ? shuffle(range(s.count)) : range(s.count);
+/** “New game” from the results: same number of hunters, empty names. */
+function clearNamesForNewGame() {
+  state.setup.players.forEach((p) => { p.name = ''; });
   state.showSetupErrors = false;
   saveSetup();
-  showScreen('setup');
 }
 
 
 /* =============================================================================
-   10. Navigation, événements et démarrage
+   11. Rules page
    ========================================================================== */
 
-function showScreen(name) {
-  let next = name;
-  if (next === 'game' && !state.game) next = 'setup';
-  if (next === 'results' && !state.lastResult) next = 'setup';
-  if (next === 'history' && state.screen !== 'history') state.returnScreen = state.screen;
-
-  state.screen = next;
-  $$('.screen').forEach((screen) => { screen.hidden = screen.dataset.screen !== next; });
-  const active = $(`.screen[data-screen="${next}"]`);
-  $$('.screen-body, .game-content', active).forEach((body) => { body.scrollTop = 0; });
-
-  if (next === 'setup') renderSetup();
-  else if (next === 'game') { renderGame(); scrollCurrentIntoView(); }
-  else if (next === 'results') renderResults();
-  else if (next === 'history') renderHistory();
-
-  syncRuntime();
+function youtubeId(url) {
+  const match = /(?:youtube(?:-nocookie)?\.com\/(?:watch\?(?:.*&)?v=|embed\/|shorts\/)|youtu\.be\/)([\w-]{11})/.exec(url);
+  return match ? match[1] : null;
 }
 
-function leaveHistory() {
-  const back = state.returnScreen;
-  if (back === 'game' && state.game) showScreen('game');
-  else if (back === 'results' && state.lastResult) showScreen('results');
-  else showScreen(state.game ? 'game' : 'setup');
+let rulesRendered = false;
+
+function renderRules() {
+  if (rulesRendered) return;
+  rulesRendered = true;
+  const frame = $('#rules-video');
+  const url = RULES_VIDEO_URL.trim();
+  const id = youtubeId(url);
+  if (id) {
+    frame.innerHTML = `<iframe src="https://www.youtube-nocookie.com/embed/${id}" title="Brand Hunters rules video" loading="lazy"
+      allow="accelerometer; encrypted-media; gyroscope; picture-in-picture; fullscreen" allowfullscreen></iframe>`;
+  } else if (url) {
+    frame.innerHTML = `<video src="${escapeHtml(url)}" controls playsinline preload="metadata"></video>`;
+  } else {
+    frame.innerHTML = `
+      <div class="video-soon">
+        <span class="video-soon-icon">${icon('play')}</span>
+        <p class="video-soon-title">Rules video coming soon</p>
+        <p class="card-hint">We’re filming it! It will appear right here.</p>
+      </div>`;
+  }
+  $('#rules-shortcuts').innerHTML = shortcutsHtml();
+  applyPlatformLabels($('#rules-shortcuts'));
 }
+
+
+/* =============================================================================
+   12. Keyboard, events and start-up
+   ========================================================================== */
 
 let toastTimeout = null;
 
 function showToast(message, duration = 1800) {
   const toast = $('#toast');
   if (!toast) return;
-  const anchor = $('.screen:not([hidden]) [data-toast-anchor]');
-  const sidePanel = anchor && isDesktop() && anchor.classList.contains('control-panel');
-  if (anchor && anchor.offsetHeight && !sidePanel) toast.style.setProperty('--toast-offset', `${anchor.offsetHeight + 12}px`);
+  // Above the “Start the hunt” / “Next hunter” bar when it sticks to the bottom (phones)
+  const bar = $('.screen:not([hidden]) .next-bar, .screen:not([hidden]) .cta-bar');
+  if (bar && getComputedStyle(bar).position === 'sticky') toast.style.setProperty('--toast-offset', `${bar.offsetHeight + 4}px`);
   else toast.style.removeProperty('--toast-offset');
   toast.textContent = message;
   toast.classList.add('is-visible');
@@ -2021,44 +1940,94 @@ function showToast(message, duration = 1800) {
   toastTimeout = setTimeout(() => toast.classList.remove('is-visible'), duration);
 }
 
-/** Toutes les actions déclenchées par un élément [data-action]. */
+function applyPlatformLabels(root = document) {
+  $$('.js-undo-key', root).forEach((el) => { el.textContent = IS_MAC ? '⌘Z' : 'Ctrl+Z'; });
+  $$('.js-mod', root).forEach((el) => { el.textContent = IS_MAC ? '⌘' : 'Ctrl'; });
+}
+
+function isTypingTarget(target) {
+  return Boolean(target && target.closest && target.closest('input, textarea, select, [contenteditable="true"]'));
+}
+
+/** Hunt shortcuts only work on the hunt page, with no window open and no field being typed in. */
+function isHuntShortcutContext(event) {
+  return state.route === 'hunt' && Boolean(state.game) && !$('dialog[open]') && !isTypingTarget(event.target);
+}
+
+/**
+ * Hunt keyboard shortcuts. Returns true if the key was used.
+ * Digits use event.code (physical key): they also work on AZERTY keyboards without Shift.
+ */
+function handleHuntShortcut(event) {
+  if (!isHuntShortcutContext(event) || event.altKey) return false;
+  const { key, code } = event;
+  const letter = key.length === 1 ? key.toLowerCase() : '';
+  const once = (fn) => {
+    if (!event.repeat) fn(); // holding a key doesn't skip several hunters
+    return true;
+  };
+
+  if (event.ctrlKey || event.metaKey) {
+    return letter === 'z' && !event.shiftKey ? once(undoLastEntry) : false;
+  }
+  // On a tab chosen with the keyboard, ← and → switch tabs.
+  const onTab = event.target.getAttribute && event.target.getAttribute('role') === 'tab';
+  if (onTab && (key === 'ArrowLeft' || key === 'ArrowRight')) return false;
+
+  if (key === ' ' || key === 'ArrowRight') return once(() => changeTurn(1));
+  if (key === 'ArrowLeft') return once(() => changeTurn(-1));
+  if (key === 'ArrowUp') { moveTarget(-1); return true; }
+  if (key === 'ArrowDown') { moveTarget(1); return true; }
+  if (key === 'Backspace' || key === 'Delete') return once(undoLastEntry);
+
+  const digit = /^Digit([1-4])$/.exec(code);
+  if (digit) return once(() => addBounty(BOUNTY_TIERS[Number(digit[1]) - 1].key));
+  if (/^Numpad\d$/.test(code) && /^\d$/.test(key)) return once(() => openCustomDialog({ text: key }));
+  if (letter === 'b' || code === 'Digit5') return once(() => addBounty('bonus'));
+  if (letter === 'x' || key === '-' || key === '−' || code === 'Digit6') return once(() => addBounty('penalty'));
+  if (letter === 's' || key === '+') return once(() => openCustomDialog());
+  if (letter === 'p') return once(togglePause);
+  if (letter === 'r') return once(restartTurnTimer);
+  if (letter === 'm') return once(toggleSound);
+  if (key === '?' || letter === 'h') return once(openShortcuts);
+  return false;
+}
+
+/** Every action triggered by a [data-action] element. */
 const ACTIONS = {
-  // Configuration
-  'count-dec': () => setPlayerCount(state.setup.count - 1),
-  'count-inc': () => setPlayerCount(state.setup.count + 1),
-  'shuffle': reshuffleOrder,
-  'move-up': (el) => moveOrder(Number(el.dataset.pos), -1),
-  'move-down': (el) => moveOrder(Number(el.dataset.pos), 1),
-  // Partie
+  // New game
+  'count-dec': () => setPlayerCount(state.setup.players.length - 1),
+  'count-inc': () => setPlayerCount(state.setup.players.length + 1),
+  'remove-player': (el) => removePlayer(Number(el.dataset.index)),
+  'shuffle': shuffleHunters,
+  'timer-step': (el) => stepTimer(el),
+  'edit-bounties': openBountyDialog,
+  // The hunt
   'select-player': (el) => selectTarget(Number(el.dataset.index)),
-  'add-points': (el) => addPoints(Number(el.dataset.value)),
+  'reset-target': () => state.game && selectTarget(state.game.current),
+  'add-bounty': (el) => addBounty(el.dataset.key, el),
   'undo': undoLastEntry,
   'next-player': () => changeTurn(1),
   'prev-player': () => changeTurn(-1),
   'toggle-pause': togglePause,
   'restart-turn-timer': restartTurnTimer,
+  'toggle-sound': toggleSound,
   'tab': (el) => setTab(el.dataset.tab),
-  'open-menu': openMenu,
+  'open-settings': openSettings,
+  'open-shortcuts': openShortcuts,
   'end-game': endGame,
   'abandon-game': abandonGame,
-  // Saisie libre
+  // Custom points
   'open-custom': () => openCustomDialog(),
-  'open-shortcuts': openShortcuts,
   'custom-sign': toggleCustomSign,
   'custom-target': (el) => selectCustomTarget(Number(el.dataset.index)),
-  // Boutons rapides
-  'edit-quick': openQuickDialog,
-  'quick-add-row': addQuickRow,
-  'quick-remove-row': removeQuickRow,
-  'quick-toggle-sign': (el) => setRowSign(el.closest('.quick-edit-row'), !el.closest('.quick-edit-row').classList.contains('is-neg')),
-  'quick-reset': resetQuickRows,
-  // Dialogues
+  // Bounty values
+  'reset-bounties': resetBountyFields,
+  // Dialogs
   'close-dialog': (el) => el.closest('dialog').close('cancel'),
-  // Résultats et historique
+  // Results and history
   'replay-last': () => replay(state.lastResult),
-  'new-game': newGame,
-  'open-history': () => { closeAllDialogs(); showScreen('history'); },
-  'history-back': leaveHistory,
+  'new-game': clearNamesForNewGame,
   'replay-history': (el) => replayFromHistory(el.dataset.id),
   'delete-history': (el) => deleteHistoryItem(el.dataset.id),
   'clear-history': clearHistory,
@@ -2069,9 +2038,9 @@ function onClick(event) {
   if (!element || element.disabled) return;
   const action = ACTIONS[element.dataset.action];
   if (!action) return;
-  if (element.hasAttribute('data-close-menu')) $('#menu-dialog').close('cancel');
+  if (element.hasAttribute('data-close-settings')) $('#settings-dialog').close('cancel');
   action(element, event);
-  // Après un clic souris sur un onglet, ← et → redeviennent « joueur précédent / suivant ».
+  // After a mouse click on a tab, ← and → go back to “previous / next hunter”.
   if (event.detail > 0 && element.getAttribute('role') === 'tab') element.blur();
 }
 
@@ -2079,59 +2048,52 @@ function onInput(event) {
   const target = event.target;
   if (target.matches('[data-name-index]')) onNameInput(target);
   else if (target.id === 'custom-value') onCustomInput(target);
-  else if (target.closest('.quick-edit-row')) onQuickRowInput(target);
-  else if (target.matches('.timer-custom-input')) onTimerCustomInput(target, false);
+  else if (target.matches('[data-bounty-key]')) target.removeAttribute('aria-invalid');
 }
 
 function onChange(event) {
   const target = event.target;
-  if (target.name === 'orderMode') setOrderMode(target.value);
-  else if (target.name === 'winRule') {
+  if (target.name === 'winRule') {
     state.setup.winRule = target.value === 'low' ? 'low' : 'high';
     saveSetup();
   } else if (target.id === 'conditional-penalties') {
     state.setup.conditionalPenalties = target.checked;
     saveSetup();
-  } else if (target.id === 'menu-conditional') {
+  } else if (target.id === 'settings-conditional') {
     if (state.game) {
       state.game.conditionalPenalties = target.checked;
-      state.setup.conditionalPenalties = target.checked; // gardé pour la prochaine partie
+      state.setup.conditionalPenalties = target.checked; // kept for the next hunt
       saveSetup();
       saveGame();
-      renderGame();
+      renderHunt();
     }
-  } else if (target.id === 'turn-timer-enabled') {
-    applyTimerConfig('setup', { enabled: target.checked });
-  } else if (target.id === 'menu-turn-enabled') {
-    applyTimerConfig('menu', { enabled: target.checked });
-  } else if (target.name && target.name.startsWith('turnDuration-')) {
-    onTimerPresetChange(target);
-  } else if (target.matches('.timer-custom-input')) {
-    onTimerCustomInput(target, true);
-  } else if (target.id === 'pref-sound') {
+  } else if (target.id === 'settings-sound') {
     setSoundPref(target.checked);
+  } else if (target.matches('.time-field')) {
+    commitTimerField(target);
   }
 }
 
 function onKeydown(event) {
   const target = event.target;
 
-  // Ctrl+Entrée (⌘+Entrée sur Mac) sur la configuration : lance la partie.
-  if (event.key === 'Enter' && (event.ctrlKey || event.metaKey) && state.screen === 'setup' && !$('dialog[open]')) {
+  // Ctrl+Enter (⌘+Enter on Mac) on the New game page: starts the hunt.
+  if (event.key === 'Enter' && (event.ctrlKey || event.metaKey) && state.route === 'new' && !$('dialog[open]')) {
     event.preventDefault();
+    if (target.matches && target.matches('.time-field')) commitTimerField(target);
     startGame();
     return;
   }
 
-  // Entrée dans la durée personnalisée : valide la durée sans lancer la partie.
-  if (event.key === 'Enter' && target.matches('.timer-custom-input')) {
+  // Enter in the round timer: applies the time without starting the hunt.
+  if (event.key === 'Enter' && target.matches && target.matches('.time-field')) {
     event.preventDefault();
     target.blur();
     return;
   }
 
-  // Entrée dans un prénom : passe au joueur suivant au lieu d'envoyer le formulaire.
-  if (event.key === 'Enter' && target.matches('[data-name-index]')) {
+  // Enter in a name: next hunter instead of submitting the form.
+  if (event.key === 'Enter' && target.matches && target.matches('[data-name-index]')) {
     event.preventDefault();
     const next = $(`#name-${Number(target.dataset.nameIndex) + 1}`);
     if (next) next.focus();
@@ -2139,9 +2101,16 @@ function onKeydown(event) {
     return;
   }
 
-  // Flèches gauche/droite pour naviguer entre les onglets.
-  if (target.getAttribute('role') === 'tab' && (event.key === 'ArrowLeft' || event.key === 'ArrowRight')) {
-    const tabs = $$('#screen-game [role="tab"]').filter((tab) => tab.offsetParent !== null);
+  // ↑ / ↓ on a ⠿ handle: moves the hunter in the turn order.
+  if ((event.key === 'ArrowUp' || event.key === 'ArrowDown') && target.matches && target.matches('[data-drag-handle]')) {
+    event.preventDefault();
+    moveHunter(Number(target.dataset.index), event.key === 'ArrowUp' ? -1 : 1, true);
+    return;
+  }
+
+  // ← / → between the score tabs.
+  if (target.getAttribute && target.getAttribute('role') === 'tab' && (event.key === 'ArrowLeft' || event.key === 'ArrowRight')) {
+    const tabs = $$('.hunters-card [role="tab"]');
     const index = tabs.indexOf(target);
     const next = tabs[(index + (event.key === 'ArrowRight' ? 1 : -1) + tabs.length) % tabs.length];
     setTab(next.dataset.tab);
@@ -2149,7 +2118,7 @@ function onKeydown(event) {
     return;
   }
 
-  if (handleGameShortcut(event)) event.preventDefault();
+  if (handleHuntShortcut(event)) event.preventDefault();
 }
 
 function bindEvents() {
@@ -2157,18 +2126,13 @@ function bindEvents() {
   document.addEventListener('input', onInput);
   document.addEventListener('change', onChange);
   document.addEventListener('keydown', onKeydown);
-  // Espace = « Joueur suivant » : on empêche aussi le bouton qui a le focus de se déclencher.
+  // Space = “Next hunter”: the focused button must not be pressed as well.
   document.addEventListener('keyup', (event) => {
-    if (event.key === ' ' && isGameShortcutContext(event)) event.preventDefault();
+    if (event.key === ' ' && isHuntShortcutContext(event)) event.preventDefault();
   });
-
-  // Passage téléphone ↔ ordinateur (fenêtre redimensionnée, tablette tournée…).
-  const onLayoutChange = () => { if (state.screen === 'game') renderGame(); };
-  if (DESKTOP_QUERY.addEventListener) DESKTOP_QUERY.addEventListener('change', onLayoutChange);
-  else DESKTOP_QUERY.addListener(onLayoutChange);
   document.addEventListener('pointerdown', primeAudio, { passive: true });
 
-  // Garde le clavier ouvert quand on touche « ± » ou un joueur dans les dialogues.
+  // Keeps the keyboard open when tapping “±” or a hunter in the custom points window.
   document.addEventListener('mousedown', (event) => {
     if (event.target.closest('[data-keep-focus]')) event.preventDefault();
   });
@@ -2176,9 +2140,11 @@ function bindEvents() {
   document.addEventListener('visibilitychange', () => {
     if (document.visibilityState === 'visible') {
       tick();
-      requestWakeLock(); // le verrou est relâché automatiquement quand la page est masquée
+      requestWakeLock(); // the lock is released automatically when the page is hidden
     }
   });
+
+  window.addEventListener('hashchange', () => showScreen(routeFromHash() || defaultRoute()));
 
   $('#setup-form').addEventListener('submit', (event) => {
     event.preventDefault();
@@ -2188,35 +2154,36 @@ function bindEvents() {
     event.preventDefault();
     submitCustomValue();
   });
-  $('#quick-form').addEventListener('submit', (event) => {
+  $('#bounty-form').addEventListener('submit', (event) => {
     event.preventDefault();
-    saveQuickDialog();
+    saveBountyDialog();
   });
 
-  // Un toucher sur le fond grisé ferme le dialogue.
+  // A tap on the dimmed background closes the window.
   $$('dialog').forEach((dialog) => {
     dialog.addEventListener('click', (event) => {
       if (event.target === dialog) dialog.close('cancel');
     });
   });
 
-  initOrderDrag();
+  initNameDrag();
 }
 
 function init() {
-  dom.screenGame = $('#screen-game');
-  dom.clock = $('#game-clock');
-  dom.turnTimer = $('#turn-timer');
-  dom.timerFill = $('#turn-timer-fill');
-  dom.timerText = $('#turn-timer-text');
+  dom.timer = $('#timer');
+  dom.timerTime = $('#timer-time');
+  dom.timerCaption = $('#timer-caption');
+  dom.timerProgress = $('#timer-progress');
+  dom.timerKnob = $('#timer-knob');
 
-  // Libellés des raccourcis adaptés au Mac (⌘ au lieu de Ctrl).
-  $$('.js-undo-key').forEach((el) => { el.textContent = IS_MAC ? '⌘Z' : 'Ctrl+Z'; });
-  $$('.js-mod').forEach((el) => { el.textContent = IS_MAC ? '⌘' : 'Ctrl'; });
-
+  $('#dialog-shortcuts').innerHTML = shortcutsHtml();
+  applyPlatformLabels();
   bindEvents();
-  // Une partie en cours est reprise automatiquement après fermeture ou rechargement.
-  showScreen(state.game ? 'game' : 'setup');
+
+  // A hunt in progress is resumed automatically after closing or reloading the page.
+  const route = routeFromHash() || defaultRoute();
+  window.history.replaceState(null, '', `#/${route}`);
+  showScreen(route, { initial: true });
 }
 
 init();
