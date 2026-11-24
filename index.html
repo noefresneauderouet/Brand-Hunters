@@ -1,0 +1,359 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+  <meta name="color-scheme" content="light dark">
+  <meta name="theme-color" content="#f4f1ec" media="(prefers-color-scheme: light)">
+  <meta name="theme-color" content="#121117" media="(prefers-color-scheme: dark)">
+  <meta name="description" content="Compteur de points pour vos parties de jeux de société : scores, classement en direct, chronomètre, minuteur par tour et historique des parties.">
+  <meta name="mobile-web-app-capable" content="yes">
+  <meta name="apple-mobile-web-app-capable" content="yes">
+  <meta name="apple-mobile-web-app-title" content="Points">
+  <title>Compteur de points</title>
+  <link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 64 64'%3E%3Crect width='64' height='64' rx='14' fill='%235146d8'/%3E%3Cg fill='%23fff'%3E%3Ccircle cx='20' cy='20' r='6'/%3E%3Ccircle cx='44' cy='20' r='6'/%3E%3Ccircle cx='32' cy='32' r='6'/%3E%3Ccircle cx='20' cy='44' r='6'/%3E%3Ccircle cx='44' cy='44' r='6'/%3E%3C/g%3E%3C/svg%3E">
+  <link rel="stylesheet" href="style.css">
+  <script src="script.js" defer></script>
+</head>
+<body>
+
+  <!-- Icônes (sprite SVG réutilisé avec <use href="#i-...">) -->
+  <svg class="sprite" xmlns="http://www.w3.org/2000/svg" aria-hidden="true" focusable="false">
+    <symbol id="i-dice" viewBox="0 0 24 24"><rect x="3.5" y="3.5" width="17" height="17" rx="4"/><circle cx="8.5" cy="8.5" r="1.4" fill="currentColor" stroke="none"/><circle cx="15.5" cy="8.5" r="1.4" fill="currentColor" stroke="none"/><circle cx="12" cy="12" r="1.4" fill="currentColor" stroke="none"/><circle cx="8.5" cy="15.5" r="1.4" fill="currentColor" stroke="none"/><circle cx="15.5" cy="15.5" r="1.4" fill="currentColor" stroke="none"/></symbol>
+    <symbol id="i-play" viewBox="0 0 24 24"><path d="M7 5.2v13.6a1 1 0 0 0 1.53.85l10.9-6.8a1 1 0 0 0 0-1.7L8.53 4.35A1 1 0 0 0 7 5.2z" fill="currentColor" stroke="none"/></symbol>
+    <symbol id="i-pause" viewBox="0 0 24 24"><rect x="6" y="4.5" width="4" height="15" rx="1.2" fill="currentColor" stroke="none"/><rect x="14" y="4.5" width="4" height="15" rx="1.2" fill="currentColor" stroke="none"/></symbol>
+    <symbol id="i-more" viewBox="0 0 24 24"><circle cx="5" cy="12" r="2" fill="currentColor" stroke="none"/><circle cx="12" cy="12" r="2" fill="currentColor" stroke="none"/><circle cx="19" cy="12" r="2" fill="currentColor" stroke="none"/></symbol>
+    <symbol id="i-undo" viewBox="0 0 24 24"><path d="M9 14 4 9l5-5"/><path d="M4 9h10.5a5.5 5.5 0 0 1 0 11H11"/></symbol>
+    <symbol id="i-shuffle" viewBox="0 0 24 24"><path d="M16 3h5v5"/><path d="M4 20 21 3"/><path d="M21 16v5h-5"/><path d="m15 15 6 6"/><path d="m4 4 5 5"/></symbol>
+    <symbol id="i-history" viewBox="0 0 24 24"><path d="M3 12a9 9 0 1 0 2.64-6.36L3 8.3"/><path d="M3 3v5.3h5.3"/><path d="M12 7v5l3.5 2"/></symbol>
+    <symbol id="i-restart" viewBox="0 0 24 24"><path d="M3 12a9 9 0 1 0 2.64-6.36L3 8.3"/><path d="M3 3v5.3h5.3"/></symbol>
+    <symbol id="i-trash" viewBox="0 0 24 24"><path d="M4 7h16"/><path d="M10 11v6M14 11v6"/><path d="M6 7l1 13h10l1-13"/><path d="M9 7V4h6v3"/></symbol>
+    <symbol id="i-grip" viewBox="0 0 24 24"><circle cx="9" cy="6" r="1.6" fill="currentColor" stroke="none"/><circle cx="15" cy="6" r="1.6" fill="currentColor" stroke="none"/><circle cx="9" cy="12" r="1.6" fill="currentColor" stroke="none"/><circle cx="15" cy="12" r="1.6" fill="currentColor" stroke="none"/><circle cx="9" cy="18" r="1.6" fill="currentColor" stroke="none"/><circle cx="15" cy="18" r="1.6" fill="currentColor" stroke="none"/></symbol>
+    <symbol id="i-up" viewBox="0 0 24 24"><path d="m6 15 6-6 6 6"/></symbol>
+    <symbol id="i-down" viewBox="0 0 24 24"><path d="m6 9 6 6 6-6"/></symbol>
+    <symbol id="i-prev" viewBox="0 0 24 24"><path d="m15 6-6 6 6 6"/></symbol>
+    <symbol id="i-next" viewBox="0 0 24 24"><path d="m9 6 6 6-6 6"/></symbol>
+    <symbol id="i-back" viewBox="0 0 24 24"><path d="M19 12H5"/><path d="m11 18-6-6 6-6"/></symbol>
+    <symbol id="i-trophy" viewBox="0 0 24 24"><path d="M8 21h8"/><path d="M12 17v4"/><path d="M7 4h10v6a5 5 0 0 1-10 0z"/><path d="M17 6h2.5A1.5 1.5 0 0 1 21 7.5V8a4 4 0 0 1-4 4"/><path d="M7 6H4.5A1.5 1.5 0 0 0 3 7.5V8a4 4 0 0 0 4 4"/></symbol>
+    <symbol id="i-edit" viewBox="0 0 24 24"><path d="M4 20h4L19.5 8.5a2.12 2.12 0 0 0-3-3L5 17v3z"/><path d="m14.5 7.5 3 3"/></symbol>
+    <symbol id="i-plus" viewBox="0 0 24 24"><path d="M12 5v14M5 12h14"/></symbol>
+    <symbol id="i-flag" viewBox="0 0 24 24"><path d="M5 21V4"/><path d="M5 4h12l-2.5 4.5L17 13H5"/></symbol>
+    <symbol id="i-timer" viewBox="0 0 24 24"><circle cx="12" cy="13" r="8"/><path d="M12 9v4l2.5 2"/><path d="M9.5 2h5"/></symbol>
+    <symbol id="i-keypad" viewBox="0 0 24 24"><circle cx="6" cy="6" r="1.5" fill="currentColor" stroke="none"/><circle cx="12" cy="6" r="1.5" fill="currentColor" stroke="none"/><circle cx="18" cy="6" r="1.5" fill="currentColor" stroke="none"/><circle cx="6" cy="12" r="1.5" fill="currentColor" stroke="none"/><circle cx="12" cy="12" r="1.5" fill="currentColor" stroke="none"/><circle cx="18" cy="12" r="1.5" fill="currentColor" stroke="none"/><circle cx="6" cy="18" r="1.5" fill="currentColor" stroke="none"/><circle cx="12" cy="18" r="1.5" fill="currentColor" stroke="none"/><circle cx="18" cy="18" r="1.5" fill="currentColor" stroke="none"/></symbol>
+  </svg>
+
+  <noscript>
+    <p class="noscript">Ce compteur de points a besoin de JavaScript pour fonctionner.</p>
+  </noscript>
+
+  <div class="app" id="app">
+
+    <!-- =================================================================
+         1. CONFIGURATION DE LA PARTIE
+         ================================================================= -->
+    <section class="screen" id="screen-setup" data-screen="setup" hidden>
+      <header class="app-bar">
+        <div class="brand">
+          <span class="brand-logo" aria-hidden="true"><svg class="icon"><use href="#i-dice"></use></svg></span>
+          <h1 class="brand-title">Compteur de points</h1>
+        </div>
+        <button type="button" class="btn btn-ghost btn-sm" data-action="open-history" aria-label="Historique des parties">
+          <svg class="icon" aria-hidden="true"><use href="#i-history"></use></svg>
+          <span class="hide-narrow">Historique</span>
+        </button>
+      </header>
+
+      <form class="screen-form" id="setup-form" novalidate autocomplete="off">
+        <div class="screen-body">
+
+          <section class="card" aria-labelledby="players-title">
+            <div class="card-head">
+              <h2 class="card-title" id="players-title">Joueurs</h2>
+              <div class="stepper" role="group" aria-label="Nombre de joueurs">
+                <button type="button" class="stepper-btn" data-action="count-dec" aria-label="Un joueur de moins">−</button>
+                <output class="stepper-value" id="player-count" aria-live="polite">4</output>
+                <button type="button" class="stepper-btn" data-action="count-inc" aria-label="Un joueur de plus">+</button>
+              </div>
+            </div>
+            <p class="hint">De 2 à 10 joueurs. Chaque prénom est obligatoire et doit être différent.</p>
+            <ol class="name-list" id="name-list"></ol>
+          </section>
+
+          <section class="card" aria-labelledby="order-title">
+            <h2 class="card-title" id="order-title">Ordre de passage</h2>
+            <div class="segmented" role="radiogroup" aria-labelledby="order-title">
+              <label class="segment"><input type="radio" name="orderMode" value="random"><span>Aléatoire</span></label>
+              <label class="segment"><input type="radio" name="orderMode" value="manual"><span>Manuel</span></label>
+            </div>
+            <p class="hint" id="order-hint"></p>
+            <ol class="order-list" id="order-list"></ol>
+            <button type="button" class="btn btn-secondary btn-block" data-action="shuffle" id="shuffle-btn">
+              <svg class="icon" aria-hidden="true"><use href="#i-shuffle"></use></svg>
+              <span>Mélanger</span>
+            </button>
+          </section>
+
+          <section class="card" aria-labelledby="rule-title">
+            <h2 class="card-title" id="rule-title">Règle de victoire</h2>
+            <div class="segmented segmented-stack" role="radiogroup" aria-labelledby="rule-title">
+              <label class="segment"><input type="radio" name="winRule" value="high"><span>Le score le plus <strong>haut</strong> gagne</span></label>
+              <label class="segment"><input type="radio" name="winRule" value="low"><span>Le score le plus <strong>bas</strong> gagne</span></label>
+            </div>
+          </section>
+
+          <section class="card" aria-labelledby="timer-title">
+            <h2 class="card-title" id="timer-title">Timer</h2>
+            <p class="hint">Le chronomètre de partie démarre tout seul (avec pause et reprise).</p>
+            <label class="switch-row">
+              <span class="switch-text">
+                Minuteur par tour
+                <small>Relancé à chaque « Joueur suivant »</small>
+              </span>
+              <input type="checkbox" class="switch" id="turn-timer-enabled">
+            </label>
+            <div class="chips" id="turn-durations" role="radiogroup" aria-label="Durée d’un tour"></div>
+          </section>
+
+        </div>
+
+        <div class="screen-footer" data-toast-anchor>
+          <button type="submit" class="btn btn-primary btn-xl btn-block">
+            <span>Commencer la partie</span>
+            <svg class="icon" aria-hidden="true"><use href="#i-next"></use></svg>
+          </button>
+        </div>
+      </form>
+    </section>
+
+    <!-- =================================================================
+         2. PARTIE EN COURS
+         ================================================================= -->
+    <section class="screen screen-game" id="screen-game" data-screen="game" hidden>
+      <h1 class="visually-hidden">Partie en cours</h1>
+
+      <header class="game-bar">
+        <button type="button" class="clock" id="clock-btn" data-action="toggle-pause" aria-label="Mettre la partie en pause">
+          <span class="clock-icon" id="clock-icon"></span>
+          <span class="clock-time" id="game-clock">00:00</span>
+        </button>
+        <p class="round-label" id="round-label">Tour 1</p>
+        <button type="button" class="btn btn-ghost btn-sm" data-action="end-game" aria-label="Terminer la partie">
+          <svg class="icon hide-narrow" aria-hidden="true"><use href="#i-flag"></use></svg>
+          <span>Terminer</span>
+        </button>
+        <button type="button" class="icon-btn" data-action="open-menu" aria-label="Menu de la partie" aria-haspopup="dialog">
+          <svg class="icon" aria-hidden="true"><use href="#i-more"></use></svg>
+        </button>
+      </header>
+
+      <div class="turn-timer" id="turn-timer" hidden>
+        <svg class="icon" aria-hidden="true"><use href="#i-timer"></use></svg>
+        <div class="turn-timer-track" aria-hidden="true"><div class="turn-timer-fill" id="turn-timer-fill"></div></div>
+        <span class="turn-timer-text" id="turn-timer-text" role="timer">1:00</span>
+        <button type="button" class="icon-btn icon-btn-sm" data-action="restart-turn-timer" aria-label="Relancer le minuteur du tour">
+          <svg class="icon" aria-hidden="true"><use href="#i-restart"></use></svg>
+        </button>
+      </div>
+
+      <p class="paused-banner" id="paused-banner" hidden>Partie en pause — touchez le chrono pour reprendre</p>
+
+      <nav class="tabs" role="tablist" aria-label="Affichage des scores">
+        <button type="button" class="tab" role="tab" id="tab-players" aria-controls="panel-players" data-action="tab" data-tab="players">Joueurs</button>
+        <button type="button" class="tab" role="tab" id="tab-ranking" aria-controls="panel-ranking" data-action="tab" data-tab="ranking">Classement</button>
+        <button type="button" class="tab" role="tab" id="tab-sheet" aria-controls="panel-sheet" data-action="tab" data-tab="sheet">Tour par tour</button>
+      </nav>
+
+      <main class="game-content" id="game-content">
+        <div class="tab-panel" id="panel-players" role="tabpanel" aria-labelledby="tab-players">
+          <ol class="player-list" id="player-list"></ol>
+        </div>
+        <div class="tab-panel" id="panel-ranking" role="tabpanel" aria-labelledby="tab-ranking" hidden>
+          <p class="panel-note" id="ranking-rule"></p>
+          <ol class="ranking-list" id="ranking-list"></ol>
+        </div>
+        <div class="tab-panel" id="panel-sheet" role="tabpanel" aria-labelledby="tab-sheet" hidden>
+          <p class="panel-note" id="sheet-note"></p>
+          <div class="sheet-wrap" id="sheet-wrap"></div>
+        </div>
+      </main>
+
+      <footer class="control-panel" data-toast-anchor>
+        <div class="target-row">
+          <p class="target-label">
+            Points pour <span class="target-name" id="target-name"></span>
+            <span class="badge badge-target" id="target-off-turn" hidden>hors tour</span>
+          </p>
+          <button type="button" class="link-btn" data-action="edit-quick">
+            <svg class="icon" aria-hidden="true"><use href="#i-edit"></use></svg>
+            <span>Boutons</span>
+          </button>
+        </div>
+        <div class="quick-grid" id="quick-grid"></div>
+        <div class="action-row">
+          <button type="button" class="btn btn-secondary" data-action="open-custom">
+            <svg class="icon hide-narrow" aria-hidden="true"><use href="#i-keypad"></use></svg>
+            <span>Autre valeur</span>
+          </button>
+          <button type="button" class="btn btn-secondary" data-action="undo" id="undo-btn">
+            <svg class="icon" aria-hidden="true"><use href="#i-undo"></use></svg>
+            <span>Annuler</span>
+          </button>
+        </div>
+        <div class="next-row">
+          <button type="button" class="btn btn-secondary btn-xl" data-action="prev-player" id="prev-btn" aria-label="Revenir au joueur précédent">
+            <svg class="icon" aria-hidden="true"><use href="#i-prev"></use></svg>
+          </button>
+          <button type="button" class="btn btn-primary btn-xl" data-action="next-player">
+            <span>Joueur suivant</span>
+            <svg class="icon" aria-hidden="true"><use href="#i-next"></use></svg>
+          </button>
+        </div>
+      </footer>
+    </section>
+
+    <!-- =================================================================
+         3. RÉSULTATS (fin de partie)
+         ================================================================= -->
+    <section class="screen" id="screen-results" data-screen="results" hidden>
+      <div class="screen-body results-body">
+        <div class="results-hero">
+          <div class="trophy" aria-hidden="true"><svg class="icon"><use href="#i-trophy"></use></svg></div>
+          <p class="results-kicker">Partie terminée</p>
+          <h1 class="results-title" id="results-title"></h1>
+          <p class="results-sub" id="results-sub"></p>
+        </div>
+        <h2 class="section-title">Classement final</h2>
+        <ol class="ranking-list" id="final-ranking"></ol>
+        <p class="results-meta" id="results-meta"></p>
+      </div>
+      <div class="screen-footer" data-toast-anchor>
+        <button type="button" class="btn btn-primary btn-xl btn-block" data-action="replay-last">
+          <svg class="icon" aria-hidden="true"><use href="#i-restart"></use></svg>
+          <span>Rejouer avec les mêmes joueurs</span>
+        </button>
+        <div class="btn-pair">
+          <button type="button" class="btn btn-secondary" data-action="new-game">Nouvelle partie</button>
+          <button type="button" class="btn btn-secondary" data-action="open-history">Historique</button>
+        </div>
+      </div>
+    </section>
+
+    <!-- =================================================================
+         4. HISTORIQUE DES PARTIES
+         ================================================================= -->
+    <section class="screen" id="screen-history" data-screen="history" hidden>
+      <header class="app-bar app-bar-3">
+        <button type="button" class="btn btn-ghost btn-sm" data-action="history-back">
+          <svg class="icon" aria-hidden="true"><use href="#i-back"></use></svg>
+          <span id="history-back-label">Retour</span>
+        </button>
+        <h1 class="app-bar-title">Historique</h1>
+        <button type="button" class="btn btn-ghost btn-sm text-danger" data-action="clear-history" id="clear-history-btn">Tout effacer</button>
+      </header>
+      <div class="screen-body">
+        <div class="empty-state" id="history-empty" hidden>
+          <div class="empty-icon" aria-hidden="true"><svg class="icon"><use href="#i-history"></use></svg></div>
+          <p class="empty-title">Aucune partie terminée</p>
+          <p class="hint">Vos parties apparaîtront ici après « Terminer la partie ».</p>
+        </div>
+        <ol class="history-list" id="history-list"></ol>
+      </div>
+    </section>
+  </div>
+
+  <!-- =================================================================
+       DIALOGUES
+       ================================================================= -->
+
+  <!-- Saisie libre d'un nombre de points -->
+  <dialog class="modal modal-top" id="custom-dialog" aria-labelledby="custom-title">
+    <form class="dialog-body" id="custom-form" novalidate>
+      <h2 class="dialog-title" id="custom-title">Saisir des points</h2>
+      <div class="target-chips" id="custom-targets" role="group" aria-label="Joueur qui reçoit les points"></div>
+      <div class="number-entry">
+        <button type="button" class="sign-btn" id="custom-sign" data-action="custom-sign" data-keep-focus aria-label="Changer le signe : ajouter ou retirer">+</button>
+        <input class="input input-xl" id="custom-value" type="text" inputmode="decimal" enterkeyhint="done" autocomplete="off" placeholder="0" aria-label="Nombre de points" autofocus>
+      </div>
+      <p class="preview" id="custom-preview" aria-live="polite"></p>
+      <div class="dialog-actions">
+        <button type="button" class="btn btn-secondary" data-action="close-dialog">Annuler</button>
+        <button type="submit" class="btn btn-plus" id="custom-submit">Ajouter</button>
+      </div>
+    </form>
+  </dialog>
+
+  <!-- Personnalisation des boutons rapides -->
+  <dialog class="modal modal-top" id="quick-dialog" aria-labelledby="quick-title">
+    <form class="dialog-body" id="quick-form" novalidate>
+      <h2 class="dialog-title" id="quick-title">Boutons rapides</h2>
+      <p class="hint">Touchez <b class="sign-demo is-pos">+</b> ou <b class="sign-demo is-neg">−</b> pour choisir : ajouter des points (vert) ou en retirer (rouge). Ces boutons sont gardés pour vos prochaines parties.</p>
+      <ul class="quick-edit-list" id="quick-edit-list"></ul>
+      <div class="btn-pair">
+        <button type="button" class="btn btn-secondary" data-action="quick-add-row" id="quick-add-btn">
+          <svg class="icon" aria-hidden="true"><use href="#i-plus"></use></svg>
+          <span>Ajouter</span>
+        </button>
+        <button type="button" class="btn btn-secondary" data-action="quick-reset">Valeurs par défaut</button>
+      </div>
+      <p class="form-message" id="quick-message" role="status"></p>
+      <div class="dialog-actions">
+        <button type="button" class="btn btn-secondary" data-action="close-dialog">Annuler</button>
+        <button type="submit" class="btn btn-primary">Enregistrer</button>
+      </div>
+    </form>
+  </dialog>
+
+  <!-- Menu de la partie -->
+  <dialog class="sheet" id="menu-dialog" aria-labelledby="menu-title">
+    <div class="dialog-body">
+      <div class="sheet-handle" aria-hidden="true"></div>
+      <h2 class="dialog-title" id="menu-title">Partie en cours</h2>
+      <div class="menu-group">
+        <label class="menu-row">
+          <span>Minuteur par tour</span>
+          <select class="select" id="menu-turn-timer"></select>
+        </label>
+        <label class="menu-row">
+          <span>Son à la fin du minuteur</span>
+          <input type="checkbox" class="switch" id="pref-sound">
+        </label>
+        <p class="menu-note" id="wake-status"></p>
+      </div>
+      <div class="menu-actions">
+        <button type="button" class="menu-btn" data-action="edit-quick" data-close-menu>
+          <svg class="icon" aria-hidden="true"><use href="#i-edit"></use></svg>
+          <span>Personnaliser les boutons rapides</span>
+        </button>
+        <button type="button" class="menu-btn" data-action="open-history" data-close-menu>
+          <svg class="icon" aria-hidden="true"><use href="#i-history"></use></svg>
+          <span>Historique des parties</span>
+        </button>
+        <button type="button" class="menu-btn" data-action="end-game" data-close-menu>
+          <svg class="icon" aria-hidden="true"><use href="#i-flag"></use></svg>
+          <span>Terminer la partie</span>
+        </button>
+        <button type="button" class="menu-btn text-danger" data-action="abandon-game" data-close-menu>
+          <svg class="icon" aria-hidden="true"><use href="#i-trash"></use></svg>
+          <span>Abandonner la partie</span>
+        </button>
+      </div>
+      <button type="button" class="btn btn-secondary btn-block" data-action="close-dialog">Fermer</button>
+    </div>
+  </dialog>
+
+  <!-- Confirmation générique -->
+  <dialog class="modal" id="confirm-dialog" aria-labelledby="confirm-title" aria-describedby="confirm-message">
+    <form class="dialog-body" method="dialog">
+      <h2 class="dialog-title" id="confirm-title"></h2>
+      <p class="dialog-text" id="confirm-message"></p>
+      <div class="dialog-actions">
+        <button class="btn btn-secondary" value="cancel">Annuler</button>
+        <button class="btn btn-primary" value="ok" id="confirm-ok">Confirmer</button>
+      </div>
+    </form>
+  </dialog>
+
+  <!-- Messages courts -->
+  <div class="toast" id="toast" role="status" aria-live="polite"></div>
+</body>
+</html>
