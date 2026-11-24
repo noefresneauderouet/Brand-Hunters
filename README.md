@@ -10,6 +10,7 @@ Toutes les données restent dans le navigateur (`localStorage`).
 | `style.css` | Mise en page téléphone, tablette et ordinateur, aux couleurs de Brand Hunters |
 | `script.js` | Logique : joueurs, scores, tours, chronomètre, minuteur, sauvegarde, historique |
 | `fonts/` | Polices Rye et Poppins hébergées avec le site, avec leurs licences |
+| `logo-brand-hunters.svg` | Logo officiel (version sable pour fond sombre) |
 
 ## Fonctionnalités
 
@@ -37,16 +38,16 @@ L'interface reprend l'univers du jeu physique Brand Hunters.
 
 **Palette**
 
-Les couleurs sont des variables en haut de `style.css`. Je les ai relevées sur les visuels : remplacez-les par les codes exacts de la charte si besoin.
+Les couleurs sont des variables en haut de `style.css`. Le rouge, l'orange et le sable sont les codes exacts du logo. La prune, le bordeaux et l'olive ont été relevés sur les visuels du jeu : ajustez-les si la charte donne d'autres codes.
 
 | Variable | Couleur | Usage |
 | --- | --- | --- |
 | `--plum` | `#2B1528` | Fond, texte sur les boutons orange |
 | `--burgundy` | `#4C1A38` | Surfaces secondaires |
-| `--red` | `#D33F3D` | Boutons « retirer », alertes, 3e place |
-| `--orange` | `#E1793A` | Bouton principal, joueur dont c'est le tour, 2e place |
+| `--red` | `#D14B35` | Boutons « retirer », alertes, 3e place |
+| `--orange` | `#F18930` | Bouton principal, joueur dont c'est le tour, 2e place |
 | `--olive` | `#96813A` | Boutons « ajouter » (un peu assombri, `#857230`, pour la lisibilité) |
-| `--sand` | `#EFB683` | Titres, onglet sélectionné, 1re place |
+| `--sand` | `#F8C787` | Titres, onglet sélectionné, 1re place |
 
 **Typographies**
 
@@ -57,10 +58,7 @@ Elles sont hébergées dans `fonts/` (licence SIL OFL, fichiers de licence inclu
 
 **Logo**
 
-Le bandeau d'accueil affiche une version provisoire du logo, recréée en texte. Pour mettre le vrai logo :
-
-1. Déposez le fichier (par exemple `logo.svg`) à côté d'`index.html`.
-2. Remplacez le bloc `<svg class="wordmark">…</svg>` par `<img class="wordmark" src="logo.svg" alt="Brand Hunters">`.
+Le logo officiel (`logo-brand-hunters.svg`) s'affiche dans le bandeau d'accueil. Pour le changer, remplacez simplement ce fichier en gardant le même nom.
 
 **Ambiance**
 

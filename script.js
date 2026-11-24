@@ -50,8 +50,8 @@ const ALARM_BEEPS = [[0, 0.16, 880], [0.24, 0.16, 880], [0.48, 0.16, 880], [0.8,
  * la DA Brand Hunters, complétées de tons « western » (turquoise, denim, cactus…).
  */
 const PLAYER_COLORS = Object.freeze([
-  '#E1793A', '#2E9C8F', '#C2477F', '#96813A', '#4F7CAC',
-  '#D33F3D', '#E8C547', '#8A5CC2', '#5E8C3A', '#EFB683',
+  '#F18930', '#2E9C8F', '#C2477F', '#96813A', '#4F7CAC',
+  '#D14B35', '#E8C547', '#8A5CC2', '#5E8C3A', '#F8C787',
 ]);
 const INK_DARK = '#2B1528';  // prune de la DA
 const INK_LIGHT = '#FFF8EE';
