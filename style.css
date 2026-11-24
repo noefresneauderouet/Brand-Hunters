@@ -224,6 +224,66 @@ button:disabled {
 }
 
 
+/* Touches de clavier */
+kbd {
+  display: inline-block;
+  min-width: 1.9em;
+  padding: 1px 6px;
+  border: 1px solid var(--border-strong);
+  border-bottom-width: 2px;
+  border-radius: 6px;
+  background: var(--surface);
+  color: var(--text);
+  font-family: inherit;
+  font-size: 0.8125em;
+  font-weight: 700;
+  line-height: 1.5;
+  text-align: center;
+  white-space: nowrap;
+}
+
+/* Indications de raccourcis sur les boutons : seulement avec souris et clavier */
+.btn .kbd {
+  margin-left: 2px;
+  border-color: var(--border-strong);
+  background: transparent;
+  color: var(--text-muted);
+  font-size: 0.75rem;
+}
+
+.btn-primary .kbd,
+.quick-btn .kbd {
+  border-color: rgba(255, 255, 255, 0.35);
+  background: rgba(255, 255, 255, 0.16);
+  color: inherit;
+}
+
+.clock .kbd {
+  margin-left: 2px;
+  color: var(--text-muted);
+  font-size: 0.6875rem;
+}
+
+@media not all and (hover: hover) and (pointer: fine) {
+  .kbd,
+  .pointer-only {
+    display: none !important;
+  }
+}
+
+@media (max-width: 899px) {
+  .desktop-only {
+    display: none !important;
+  }
+}
+
+@media (min-width: 900px) {
+  .mobile-only {
+    display: none !important;
+  }
+}
+
+
 /* 3. Mise en page des écrans =============================================== */
 
 .app {
@@ -1037,7 +1097,8 @@ button:disabled {
 /* Onglets */
 .tabs {
   display: grid;
-  grid-template-columns: repeat(3, 1fr);
+  grid-auto-columns: minmax(0, 1fr);
+  grid-auto-flow: column;
   gap: 4px;
   margin: 0 12px;
   padding: 4px;
@@ -1411,6 +1472,10 @@ button:disabled {
   background: var(--accent-soft);
 }
 
+.game-side {
+  flex: none;
+}
+
 /* Panneau de commandes (zone du pouce) */
 .control-panel {
   display: flex;
@@ -1460,6 +1525,7 @@ button:disabled {
 }
 
 .quick-btn {
+  position: relative;
   min-height: 56px;
   padding: 0 2px;
   border: 0;
@@ -1471,6 +1537,21 @@ button:disabled {
   white-space: nowrap;
   font-variant-numeric: tabular-nums;
   transition: transform 0.08s ease, filter 0.08s ease;
+}
+
+.quick-btn .kbd {
+  position: absolute;
+  top: 4px;
+  left: 4px;
+  min-width: 0;
+  padding: 0 4px;
+  border: 0;
+  font-size: 0.625rem;
+  line-height: 1.5;
+}
+
+.quick-btn.is-pressed {
+  animation: key-press 0.25s ease;
 }
 
 .quick-btn.is-long {
@@ -1580,6 +1661,12 @@ button:disabled {
 .history-list {
   display: flex;
   flex-direction: column;
+  gap: 12px;
+  padding-top: 12px;
+}
+
+.history-list > .card {
+  margin-top: 0;
 }
 
 .history-head {
@@ -1739,8 +1826,8 @@ dialog::backdrop {
   overflow-y: auto;
 }
 
-/* Panneau qui monte du bas de l'écran */
-.sheet {
+/* Panneau qui monte du bas de l'écran (menu) */
+.bottom-sheet {
   width: 100%;
   max-width: 640px;
   max-height: 90dvh;
@@ -1749,12 +1836,12 @@ dialog::backdrop {
   border-radius: 24px 24px 0 0;
 }
 
-.sheet .dialog-body {
+.bottom-sheet .dialog-body {
   padding-top: 8px;
   padding-bottom: calc(16px + env(safe-area-inset-bottom));
 }
 
-.sheet[open] {
+.bottom-sheet[open] {
   animation: sheet-in 0.24s cubic-bezier(0.2, 0.9, 0.3, 1);
 }
 
@@ -1900,6 +1987,33 @@ dialog::backdrop {
   color: var(--minus-text);
 }
 
+/* Aide des raccourcis clavier */
+.shortcut-list {
+  display: flex;
+  flex-direction: column;
+  margin: 0;
+}
+
+.shortcut-list > div {
+  display: grid;
+  grid-template-columns: 10.5em 1fr;
+  align-items: center;
+  gap: 12px;
+  min-height: 40px;
+  padding: 4px 0;
+  border-bottom: 1px solid var(--border);
+}
+
+.shortcut-list dt {
+  color: var(--text-muted);
+  font-size: 0.875rem;
+}
+
+.shortcut-list dd {
+  margin: 0;
+  font-weight: 600;
+}
+
 /* Menu */
 .menu-group {
   display: flex;
@@ -2010,6 +2124,10 @@ dialog::backdrop {
 
 /* 11. Animations =========================================================== */
 
+@keyframes key-press {
+  40% { transform: scale(0.92); filter: brightness(0.85); }
+}
+
 @keyframes blink {
   50% { opacity: 0.3; }
 }
@@ -2064,7 +2182,57 @@ dialog::backdrop {
 }
 
 
-/* 12. Petits écrans puis écrans plus larges ================================ */
+/* 12. Souris : survol et barres de défilement =============================== */
+
+@media (hover: hover) {
+  .btn-primary:hover:not(:disabled) {
+    background: var(--accent-strong);
+  }
+
+  .btn-secondary:hover:not(:disabled),
+  .btn-ghost:hover:not(:disabled),
+  .icon-btn:hover:not(:disabled),
+  .menu-btn:hover,
+  .stepper-btn:hover:not(:disabled) {
+    background: var(--surface-3);
+  }
+
+  .btn-plus:hover:not(:disabled),
+  .btn-minus:hover:not(:disabled),
+  .btn-danger:hover:not(:disabled),
+  .sign-btn:hover,
+  .quick-btn:hover:not(:active) {
+    filter: brightness(1.1);
+  }
+
+  .link-btn:hover {
+    background: var(--accent-soft);
+  }
+
+  .tab:hover:not([aria-selected="true"]),
+  .segment:hover input:not(:checked) + span {
+    color: var(--text);
+  }
+
+  .player-card:not(.is-current):not(.is-target):hover,
+  .chip:hover input:not(:checked) + span,
+  .target-chip:not(.is-selected):hover,
+  .clock:hover {
+    border-color: var(--border-strong);
+  }
+}
+
+.screen-body,
+.game-content,
+.sheet-wrap,
+.side-ranking .ranking-list,
+dialog {
+  scrollbar-color: var(--border-strong) transparent;
+  scrollbar-width: thin;
+}
+
+
+/* 13. Petits écrans, tablettes et ordinateurs =============================== */
 
 @media (max-width: 369px) {
   .hide-narrow {
@@ -2108,7 +2276,8 @@ dialog::backdrop {
   }
 }
 
-@media (min-width: 680px) {
+/* Tablette en portrait : la version téléphone, centrée */
+@media (min-width: 680px) and (max-width: 899px) {
   body {
     background: var(--bg-outer);
   }
@@ -2120,5 +2289,283 @@ dialog::backdrop {
   .screen-body {
     padding-left: 24px;
     padding-right: 24px;
+  }
+}
+
+/* Ordinateur et tablette en paysage ----------------------------------------- */
+@media (min-width: 900px) {
+  .app {
+    max-width: none;
+  }
+
+  /* Écrans à contenu centré : configuration, résultats, historique */
+  .screen {
+    --content-max: 1040px;
+  }
+
+  .screen[data-screen="results"] {
+    --content-max: 640px;
+  }
+
+  .app-bar,
+  .screen-body,
+  .screen-footer {
+    padding-left: max(24px, calc((100% - var(--content-max)) / 2));
+    padding-right: max(24px, calc((100% - var(--content-max)) / 2));
+  }
+
+  .app-bar {
+    min-height: 72px;
+  }
+
+  .brand-title {
+    font-size: 1.25rem;
+  }
+
+  .screen-footer {
+    align-items: center;
+    padding-top: 16px;
+    padding-bottom: 16px;
+  }
+
+  .screen-footer > * {
+    width: 100%;
+    max-width: 440px;
+  }
+
+  .card {
+    padding: 20px;
+  }
+
+  /* Configuration sur deux colonnes */
+  .setup-grid {
+    display: grid;
+    grid-template-areas:
+      "players order"
+      "rule timer";
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+    gap: 16px;
+    padding-top: 8px;
+  }
+
+  .setup-grid > .card {
+    margin-top: 0;
+  }
+
+  .card-players { grid-area: players; }
+  .card-order { grid-area: order; }
+  .card-rule { grid-area: rule; }
+  .card-timer { grid-area: timer; }
+
+  /* Partie : joueurs à gauche, classement et saisie à droite */
+  .screen-game {
+    display: grid;
+    grid-template-areas:
+      "bar bar"
+      "timer timer"
+      "paused paused"
+      "tabs side"
+      "content side";
+    grid-template-columns: minmax(0, 1fr) clamp(340px, 30vw, 420px);
+    grid-template-rows: auto auto auto auto minmax(0, 1fr);
+    column-gap: 24px;
+    padding: 0 max(24px, calc((100% - 1480px) / 2)) 24px;
+  }
+
+  .game-bar {
+    grid-area: bar;
+    gap: 8px;
+    padding: 16px 0 12px;
+  }
+
+  .round-label {
+    color: var(--text);
+    font-size: 1.125rem;
+  }
+
+  .round-player {
+    color: var(--text-muted);
+    font-weight: 600;
+  }
+
+  .turn-timer {
+    grid-area: timer;
+    margin: 0 0 12px;
+    padding: 6px 6px 6px 14px;
+  }
+
+  .turn-timer-track {
+    height: 12px;
+  }
+
+  .paused-banner {
+    grid-area: paused;
+    margin: 0 0 12px;
+  }
+
+  .tabs {
+    grid-area: tabs;
+    justify-self: start;
+    width: min(100%, 360px);
+    margin: 0;
+  }
+
+  .game-content {
+    grid-area: content;
+    margin: 0 -6px;
+    padding: 14px 6px 6px;
+  }
+
+  .player-list {
+    display: grid;
+    grid-template-columns: repeat(auto-fill, minmax(280px, 1fr));
+    gap: 12px;
+  }
+
+  .player-card {
+    gap: 14px;
+    min-height: 92px;
+    padding: 14px 18px 14px 16px;
+  }
+
+  .player-card .avatar {
+    width: 52px;
+    height: 52px;
+    font-size: 1.375rem;
+  }
+
+  .player-name {
+    font-size: 1.25rem;
+  }
+
+  .player-meta {
+    font-size: 0.875rem;
+  }
+
+  .player-score {
+    font-size: 2.25rem;
+  }
+
+  .sheet th,
+  .sheet td {
+    min-width: 96px;
+    padding: 10px 12px;
+  }
+
+  .game-side {
+    display: flex;
+    grid-area: side;
+    flex-direction: column;
+    gap: 16px;
+    min-height: 0;
+  }
+
+  .side-ranking {
+    display: flex;
+    flex: 1;
+    flex-direction: column;
+    min-height: 0;
+    padding: 16px;
+    border: 1px solid var(--border);
+    border-radius: var(--radius-lg);
+    background: var(--surface);
+    box-shadow: var(--shadow-sm);
+  }
+
+  .side-head {
+    display: flex;
+    align-items: baseline;
+    justify-content: space-between;
+    gap: 8px;
+    margin-bottom: 12px;
+  }
+
+  .side-title {
+    color: var(--text-muted);
+    font-size: 0.8125rem;
+    font-weight: 800;
+    letter-spacing: 0.06em;
+    text-transform: uppercase;
+  }
+
+  .side-note {
+    color: var(--text-muted);
+    font-size: 0.8125rem;
+  }
+
+  .side-ranking .ranking-list {
+    min-height: 0;
+    margin: 0 -4px;
+    padding: 2px 4px 4px;
+    overflow-y: auto;
+  }
+
+  .side-ranking .rank-row {
+    min-height: 52px;
+    background: var(--surface-2);
+    box-shadow: none;
+  }
+
+  .side-ranking .rank-row.is-first {
+    box-shadow: inset 0 0 0 2px var(--gold);
+  }
+
+  .control-panel {
+    flex: none;
+    gap: 10px;
+    padding: 16px;
+    border: 1px solid var(--border);
+    border-radius: var(--radius-lg);
+    box-shadow: var(--shadow-md);
+  }
+
+  .quick-btn {
+    min-height: 64px;
+  }
+
+  .action-row .btn {
+    min-height: 50px;
+  }
+
+  /* Résultats et historique */
+  .results-hero {
+    padding-top: 40px;
+  }
+
+  .history-list {
+    display: grid;
+    grid-template-columns: repeat(auto-fill, minmax(320px, 1fr));
+    align-items: start;
+    gap: 16px;
+  }
+
+  /* Fenêtres : toujours centrées (pas de clavier virtuel ni de pouce) */
+  .dialog-body {
+    padding: 24px;
+  }
+
+  .modal-top {
+    margin: auto;
+  }
+
+  .bottom-sheet {
+    width: calc(100% - 48px);
+    max-width: 460px;
+    max-height: calc(100dvh - 48px);
+    margin: auto;
+    border-radius: 24px;
+  }
+
+  .bottom-sheet[open] {
+    animation: modal-in 0.2s ease-out;
+  }
+
+  .bottom-sheet .dialog-body {
+    padding-top: 24px;
+    padding-bottom: 24px;
+  }
+
+  .sheet-handle {
+    display: none;
   }
 }

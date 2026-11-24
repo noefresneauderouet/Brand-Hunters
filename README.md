@@ -1,13 +1,13 @@
 # Compteur de points
 
-Site web mobile-first pour compter les points pendant une partie de jeu de société.
+Site web pour compter les points pendant une partie de jeu de société, **sur téléphone comme sur ordinateur**.
 HTML, CSS et JavaScript natifs : aucun framework, aucune bibliothèque, aucune étape de build.
 Toutes les données restent dans le navigateur (`localStorage`).
 
 | Fichier | Rôle |
 | --- | --- |
 | `index.html` | Structure des 4 écrans (configuration, partie, résultats, historique) et des fenêtres de dialogue |
-| `style.css` | Mise en page mobile-first, thème clair/sombre automatique |
+| `style.css` | Mise en page téléphone, tablette et ordinateur, thème clair/sombre automatique |
 | `script.js` | Logique : joueurs, scores, tours, chronomètre, minuteur, sauvegarde, historique |
 
 ## Fonctionnalités
@@ -29,6 +29,32 @@ Toutes les données restent dans le navigateur (`localStorage`).
   - « Terminer la partie » affiche le classement final et l'enregistre dans l'historique ;
   - l'historique permet de supprimer une partie ;
   - « Rejouer avec les mêmes joueurs » ouvre la configuration pré-remplie : il ne reste qu'à toucher « Commencer ». En ordre aléatoire, un nouveau tirage est fait.
+
+## Sur ordinateur
+
+L'interface s'adapte automatiquement à partir de 900 px de large (ordinateur, tablette à l'horizontale) :
+
+- la configuration s'affiche sur deux colonnes ;
+- pendant la partie, les joueurs apparaissent en grille à gauche. À droite, un panneau garde toujours visibles le **classement** et la **saisie des points** ;
+- les fenêtres s'ouvrent au centre de l'écran, et les boutons réagissent au survol de la souris ;
+- avec une souris et un clavier, chaque bouton indique son raccourci (ces indications sont masquées sur écran tactile).
+
+### Raccourcis clavier (écran de partie)
+
+| Touche | Action |
+| --- | --- |
+| `Espace` ou `→` | Joueur suivant |
+| `←` | Joueur précédent |
+| `1` à `9`, `0` | Boutons rapides, dans l'ordre |
+| `S`, `+` ou `−` | Saisir une autre valeur |
+| Pavé numérique | Taper directement un nombre, puis `Entrée` |
+| `↑` `↓` | Choisir le joueur qui reçoit les points |
+| `Ctrl+Z` (`⌘Z` sur Mac) ou `Retour arrière` | Annuler la dernière saisie |
+| `P` | Pause / reprise du chronomètre |
+| `?` | Afficher l'aide des raccourcis |
+| `Échap` | Fermer une fenêtre |
+
+Sur l'écran de configuration, `Ctrl+Entrée` lance la partie. Les chiffres fonctionnent aussi en AZERTY sans appuyer sur `Maj`.
 
 ## Organisation des données dans `localStorage`
 
@@ -109,8 +135,8 @@ En cas d'égalité, plusieurs joueurs ont le rang 1 et `winners` contient tous l
 
 ### Sur ordinateur
 
-Double-cliquez sur `index.html` : le site s'ouvre et fonctionne directement.
-Pour simuler un téléphone dans Chrome ou Edge : touche F12, puis l'icône téléphone (ou Ctrl+Maj+M).
+Double-cliquez sur `index.html` : le site s'ouvre et fonctionne directement, avec l'interface ordinateur.
+Pour voir la version téléphone dans Chrome ou Edge : touche F12, puis l'icône téléphone (ou Ctrl+Maj+M).
 
 ### Sur téléphone, en local (même réseau Wi-Fi)
 

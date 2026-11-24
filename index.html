@@ -39,6 +39,7 @@
     <symbol id="i-plus" viewBox="0 0 24 24"><path d="M12 5v14M5 12h14"/></symbol>
     <symbol id="i-flag" viewBox="0 0 24 24"><path d="M5 21V4"/><path d="M5 4h12l-2.5 4.5L17 13H5"/></symbol>
     <symbol id="i-timer" viewBox="0 0 24 24"><circle cx="12" cy="13" r="8"/><path d="M12 9v4l2.5 2"/><path d="M9.5 2h5"/></symbol>
+    <symbol id="i-keyboard" viewBox="0 0 24 24"><rect x="2.5" y="6" width="19" height="12" rx="2.5"/><path d="M6.5 10h.01M10.5 10h.01M14.5 10h.01M18 10h.01M7.5 14h9"/></symbol>
     <symbol id="i-keypad" viewBox="0 0 24 24"><circle cx="6" cy="6" r="1.5" fill="currentColor" stroke="none"/><circle cx="12" cy="6" r="1.5" fill="currentColor" stroke="none"/><circle cx="18" cy="6" r="1.5" fill="currentColor" stroke="none"/><circle cx="6" cy="12" r="1.5" fill="currentColor" stroke="none"/><circle cx="12" cy="12" r="1.5" fill="currentColor" stroke="none"/><circle cx="18" cy="12" r="1.5" fill="currentColor" stroke="none"/><circle cx="6" cy="18" r="1.5" fill="currentColor" stroke="none"/><circle cx="12" cy="18" r="1.5" fill="currentColor" stroke="none"/><circle cx="18" cy="18" r="1.5" fill="currentColor" stroke="none"/></symbol>
   </svg>
 
@@ -65,8 +66,9 @@
 
       <form class="screen-form" id="setup-form" novalidate autocomplete="off">
         <div class="screen-body">
+          <div class="setup-grid">
 
-          <section class="card" aria-labelledby="players-title">
+          <section class="card card-players" aria-labelledby="players-title">
             <div class="card-head">
               <h2 class="card-title" id="players-title">Joueurs</h2>
               <div class="stepper" role="group" aria-label="Nombre de joueurs">
@@ -79,7 +81,7 @@
             <ol class="name-list" id="name-list"></ol>
           </section>
 
-          <section class="card" aria-labelledby="order-title">
+          <section class="card card-order" aria-labelledby="order-title">
             <h2 class="card-title" id="order-title">Ordre de passage</h2>
             <div class="segmented" role="radiogroup" aria-labelledby="order-title">
               <label class="segment"><input type="radio" name="orderMode" value="random"><span>Aléatoire</span></label>
@@ -93,7 +95,7 @@
             </button>
           </section>
 
-          <section class="card" aria-labelledby="rule-title">
+          <section class="card card-rule" aria-labelledby="rule-title">
             <h2 class="card-title" id="rule-title">Règle de victoire</h2>
             <div class="segmented segmented-stack" role="radiogroup" aria-labelledby="rule-title">
               <label class="segment"><input type="radio" name="winRule" value="high"><span>Le score le plus <strong>haut</strong> gagne</span></label>
@@ -101,7 +103,7 @@
             </div>
           </section>
 
-          <section class="card" aria-labelledby="timer-title">
+          <section class="card card-timer" aria-labelledby="timer-title">
             <h2 class="card-title" id="timer-title">Timer</h2>
             <p class="hint">Le chronomètre de partie démarre tout seul (avec pause et reprise).</p>
             <label class="switch-row">
@@ -114,12 +116,14 @@
             <div class="chips" id="turn-durations" role="radiogroup" aria-label="Durée d’un tour"></div>
           </section>
 
+          </div>
         </div>
 
         <div class="screen-footer" data-toast-anchor>
-          <button type="submit" class="btn btn-primary btn-xl btn-block">
+          <button type="submit" class="btn btn-primary btn-xl btn-block" aria-keyshortcuts="Control+Enter">
             <span>Commencer la partie</span>
             <svg class="icon" aria-hidden="true"><use href="#i-next"></use></svg>
+            <kbd class="kbd" aria-hidden="true"><span class="js-mod">Ctrl</span>+Entrée</kbd>
           </button>
         </div>
       </form>
@@ -132,14 +136,18 @@
       <h1 class="visually-hidden">Partie en cours</h1>
 
       <header class="game-bar">
-        <button type="button" class="clock" id="clock-btn" data-action="toggle-pause" aria-label="Mettre la partie en pause">
+        <button type="button" class="clock" id="clock-btn" data-action="toggle-pause" aria-label="Mettre la partie en pause" aria-keyshortcuts="P">
           <span class="clock-icon" id="clock-icon"></span>
           <span class="clock-time" id="game-clock">00:00</span>
+          <kbd class="kbd" aria-hidden="true">P</kbd>
         </button>
-        <p class="round-label" id="round-label">Tour 1</p>
+        <p class="round-label"><span id="round-number">Tour 1</span><span class="round-player desktop-only" id="round-player"></span></p>
         <button type="button" class="btn btn-ghost btn-sm" data-action="end-game" aria-label="Terminer la partie">
           <svg class="icon hide-narrow" aria-hidden="true"><use href="#i-flag"></use></svg>
           <span>Terminer</span>
+        </button>
+        <button type="button" class="icon-btn pointer-only" data-action="open-shortcuts" aria-label="Raccourcis clavier" aria-haspopup="dialog">
+          <svg class="icon" aria-hidden="true"><use href="#i-keyboard"></use></svg>
         </button>
         <button type="button" class="icon-btn" data-action="open-menu" aria-label="Menu de la partie" aria-haspopup="dialog">
           <svg class="icon" aria-hidden="true"><use href="#i-more"></use></svg>
@@ -159,7 +167,7 @@
 
       <nav class="tabs" role="tablist" aria-label="Affichage des scores">
         <button type="button" class="tab" role="tab" id="tab-players" aria-controls="panel-players" data-action="tab" data-tab="players">Joueurs</button>
-        <button type="button" class="tab" role="tab" id="tab-ranking" aria-controls="panel-ranking" data-action="tab" data-tab="ranking">Classement</button>
+        <button type="button" class="tab mobile-only" role="tab" id="tab-ranking" aria-controls="panel-ranking" data-action="tab" data-tab="ranking">Classement</button>
         <button type="button" class="tab" role="tab" id="tab-sheet" aria-controls="panel-sheet" data-action="tab" data-tab="sheet">Tour par tour</button>
       </nav>
 
@@ -177,7 +185,16 @@
         </div>
       </main>
 
-      <footer class="control-panel" data-toast-anchor>
+      <aside class="game-side" aria-label="Classement et saisie des points">
+        <section class="side-ranking desktop-only" aria-labelledby="side-ranking-title">
+          <div class="side-head">
+            <h2 class="side-title" id="side-ranking-title">Classement</h2>
+            <span class="side-note" id="side-ranking-rule"></span>
+          </div>
+          <ol class="ranking-list" id="side-ranking-list"></ol>
+        </section>
+
+        <div class="control-panel" data-toast-anchor>
         <div class="target-row">
           <p class="target-label">
             Points pour <span class="target-name" id="target-name"></span>
@@ -190,25 +207,29 @@
         </div>
         <div class="quick-grid" id="quick-grid"></div>
         <div class="action-row">
-          <button type="button" class="btn btn-secondary" data-action="open-custom">
-            <svg class="icon hide-narrow" aria-hidden="true"><use href="#i-keypad"></use></svg>
+          <button type="button" class="btn btn-secondary" data-action="open-custom" aria-keyshortcuts="S">
+            <svg class="icon hide-narrow mobile-only" aria-hidden="true"><use href="#i-keypad"></use></svg>
             <span>Autre valeur</span>
+            <kbd class="kbd" aria-hidden="true">S</kbd>
           </button>
-          <button type="button" class="btn btn-secondary" data-action="undo" id="undo-btn">
+          <button type="button" class="btn btn-secondary" data-action="undo" id="undo-btn" aria-keyshortcuts="Control+Z Backspace">
             <svg class="icon" aria-hidden="true"><use href="#i-undo"></use></svg>
             <span>Annuler</span>
+            <kbd class="kbd js-undo-key" aria-hidden="true">Ctrl+Z</kbd>
           </button>
         </div>
         <div class="next-row">
-          <button type="button" class="btn btn-secondary btn-xl" data-action="prev-player" id="prev-btn" aria-label="Revenir au joueur précédent">
+          <button type="button" class="btn btn-secondary btn-xl" data-action="prev-player" id="prev-btn" aria-label="Revenir au joueur précédent" aria-keyshortcuts="ArrowLeft">
             <svg class="icon" aria-hidden="true"><use href="#i-prev"></use></svg>
           </button>
-          <button type="button" class="btn btn-primary btn-xl" data-action="next-player">
+          <button type="button" class="btn btn-primary btn-xl" data-action="next-player" aria-keyshortcuts="Space ArrowRight">
             <span>Joueur suivant</span>
             <svg class="icon" aria-hidden="true"><use href="#i-next"></use></svg>
+            <kbd class="kbd" aria-hidden="true">Espace</kbd>
           </button>
         </div>
-      </footer>
+        </div>
+      </aside>
     </section>
 
     <!-- =================================================================
@@ -304,7 +325,7 @@
   </dialog>
 
   <!-- Menu de la partie -->
-  <dialog class="sheet" id="menu-dialog" aria-labelledby="menu-title">
+  <dialog class="bottom-sheet" id="menu-dialog" aria-labelledby="menu-title">
     <div class="dialog-body">
       <div class="sheet-handle" aria-hidden="true"></div>
       <h2 class="dialog-title" id="menu-title">Partie en cours</h2>
@@ -323,6 +344,10 @@
         <button type="button" class="menu-btn" data-action="edit-quick" data-close-menu>
           <svg class="icon" aria-hidden="true"><use href="#i-edit"></use></svg>
           <span>Personnaliser les boutons rapides</span>
+        </button>
+        <button type="button" class="menu-btn pointer-only" data-action="open-shortcuts" data-close-menu>
+          <svg class="icon" aria-hidden="true"><use href="#i-keyboard"></use></svg>
+          <span>Raccourcis clavier</span>
         </button>
         <button type="button" class="menu-btn" data-action="open-history" data-close-menu>
           <svg class="icon" aria-hidden="true"><use href="#i-history"></use></svg>
@@ -351,6 +376,27 @@
         <button class="btn btn-primary" value="ok" id="confirm-ok">Confirmer</button>
       </div>
     </form>
+  </dialog>
+
+  <!-- Raccourcis clavier (ordinateur) -->
+  <dialog class="modal" id="shortcuts-dialog" aria-labelledby="shortcuts-title">
+    <div class="dialog-body">
+      <h2 class="dialog-title" id="shortcuts-title">Raccourcis clavier</h2>
+      <dl class="shortcut-list">
+        <div><dt><kbd>Espace</kbd> ou <kbd>→</kbd></dt><dd>Joueur suivant</dd></div>
+        <div><dt><kbd>←</kbd></dt><dd>Joueur précédent</dd></div>
+        <div><dt><kbd>1</kbd> à <kbd>9</kbd>, <kbd>0</kbd></dt><dd>Boutons rapides, dans l’ordre</dd></div>
+        <div><dt><kbd>S</kbd>, <kbd>+</kbd> ou <kbd>−</kbd></dt><dd>Saisir une autre valeur</dd></div>
+        <div><dt>Pavé numérique</dt><dd>Taper directement un nombre, puis <kbd>Entrée</kbd></dd></div>
+        <div><dt><kbd>↑</kbd> <kbd>↓</kbd></dt><dd>Choisir qui reçoit les points</dd></div>
+        <div><dt><kbd class="js-undo-key">Ctrl+Z</kbd> ou <kbd>⌫</kbd></dt><dd>Annuler la dernière saisie</dd></div>
+        <div><dt><kbd>P</kbd></dt><dd>Pause / reprise du chrono</dd></div>
+        <div><dt><kbd>?</kbd></dt><dd>Afficher cette aide</dd></div>
+        <div><dt><kbd>Échap</kbd></dt><dd>Fermer une fenêtre</dd></div>
+      </dl>
+      <p class="hint">Sur l’écran de configuration, <kbd><span class="js-mod">Ctrl</span>+Entrée</kbd> lance la partie.</p>
+      <button type="button" class="btn btn-primary btn-block" data-action="close-dialog">Compris</button>
+    </div>
   </dialog>
 
   <!-- Messages courts -->

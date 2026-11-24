@@ -47,6 +47,9 @@ const PLAYER_COLORS = Object.freeze([
   '#e5484d', '#3e63dd', '#30a46c', '#f76b15', '#8e4ec6',
   '#0d9488', '#d6409f', '#b7791f', '#0284c7', '#6b7280',
 ]);
+/** Au-delà de cette largeur : mise en page « ordinateur » (classement affiché en permanence). */
+const DESKTOP_QUERY = window.matchMedia('(min-width: 900px)');
+const IS_MAC = /Mac|iPhone|iPad|iPod/.test(navigator.platform || navigator.userAgent);
 
 
 /* =============================================================================
@@ -60,6 +63,7 @@ const range = (n) => Array.from({ length: n }, (_, i) => i);
 const roundScore = (n) => Math.round(n * 100) / 100;
 const uid = () => Date.now().toString(36) + Math.random().toString(36).slice(2, 8);
 const prefersReducedMotion = () => window.matchMedia('(prefers-reduced-motion: reduce)').matches;
+const isDesktop = () => DESKTOP_QUERY.matches;
 
 function escapeHtml(value) {
   const map = { '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' };
@@ -724,19 +728,26 @@ function renderGameBar(g) {
   $('#clock-icon').innerHTML = icon(paused ? 'play' : 'pause');
   $('#clock-btn').setAttribute('aria-label', paused ? 'Reprendre la partie' : 'Mettre la partie en pause');
   $('#paused-banner').hidden = !paused;
-  $('#round-label').textContent = `Tour ${g.round}`;
+  $('#round-number').textContent = `Tour ${g.round}`;
+  $('#round-player').textContent = ` · à ${g.players[g.current].name} de jouer`;
   dom.turnTimer.hidden = !g.turnTimer.enabled;
 }
 
+/** Sur ordinateur, le classement est toujours visible à droite : son onglet n'existe pas. */
+function activeTab() {
+  return state.tab === 'ranking' && isDesktop() ? 'players' : state.tab;
+}
+
 function renderTabs() {
+  const current = activeTab();
   $$('#screen-game [role="tab"]').forEach((tab) => {
-    const selected = tab.dataset.tab === state.tab;
+    const selected = tab.dataset.tab === current;
     tab.setAttribute('aria-selected', String(selected));
     tab.tabIndex = selected ? 0 : -1;
   });
-  $('#panel-players').hidden = state.tab !== 'players';
-  $('#panel-ranking').hidden = state.tab !== 'ranking';
-  $('#panel-sheet').hidden = state.tab !== 'sheet';
+  $('#panel-players').hidden = current !== 'players';
+  $('#panel-ranking').hidden = current !== 'ranking';
+  $('#panel-sheet').hidden = current !== 'sheet';
 }
 
 function setTab(tab) {
@@ -744,8 +755,8 @@ function setTab(tab) {
   state.tab = tab;
   renderTabs();
   $('#game-content').scrollTop = 0;
-  if (tab === 'players') scrollCurrentIntoView();
-  if (tab === 'sheet') {
+  if (activeTab() === 'players') scrollCurrentIntoView();
+  if (activeTab() === 'sheet') {
     const row = $('#sheet-wrap .is-current-round');
     if (row) row.scrollIntoView({ block: 'nearest' });
   }
@@ -806,8 +817,12 @@ function rankingRowHtml(row) {
 }
 
 function renderRanking(g, ranking) {
+  const rows = withGaps(ranking, g.entries.length > 0).map(rankingRowHtml).join('');
   $('#ranking-rule').textContent = `${ruleLabel(g.winRule)} · mis à jour en direct`;
-  $('#ranking-list').innerHTML = withGaps(ranking, g.entries.length > 0).map(rankingRowHtml).join('');
+  $('#ranking-list').innerHTML = rows;
+  // Panneau latéral (ordinateur)
+  $('#side-ranking-rule').textContent = g.winRule === 'low' ? 'le plus bas gagne' : 'le plus haut gagne';
+  $('#side-ranking-list').innerHTML = rows;
 }
 
 /** Feuille de score : une ligne par tour, une colonne par joueur. */
@@ -868,11 +883,14 @@ function renderQuickGrid() {
   const cols = count <= 5 ? count : Math.min(5, Math.ceil(count / 2));
   const grid = $('#quick-grid');
   grid.style.setProperty('--cols', cols);
-  grid.innerHTML = values.map((v) => {
+  grid.innerHTML = values.map((v, i) => {
     const label = formatSigned(v);
     const long = label.length > 5 ? ' is-long' : '';
     const verb = v > 0 ? 'Ajouter' : 'Retirer';
-    return `<button type="button" class="quick-btn ${v < 0 ? 'is-neg' : 'is-pos'}${long}" data-action="add-points" data-value="${v}" aria-label="${verb} ${formatNumber(Math.abs(v))} points">${label}</button>`;
+    const key = i < 10 ? String((i + 1) % 10) : ''; // touches 1 à 9, puis 0
+    const shortcut = key ? ` aria-keyshortcuts="${key}"` : '';
+    const hint = key ? `<kbd class="kbd" aria-hidden="true">${key}</kbd>` : '';
+    return `<button type="button" class="quick-btn ${v < 0 ? 'is-neg' : 'is-pos'}${long}" data-action="add-points" data-value="${v}" aria-label="${verb} ${formatNumber(Math.abs(v))} points"${shortcut}>${hint}${label}</button>`;
   }).join('');
 }
 
@@ -943,9 +961,82 @@ function changeTurn(direction) {
 }
 
 function scrollCurrentIntoView() {
-  if (state.tab !== 'players') return;
+  if (activeTab() !== 'players') return;
   const card = $('#player-list .player-card.is-current');
   if (card) card.scrollIntoView({ block: 'nearest', behavior: prefersReducedMotion() ? 'auto' : 'smooth' });
+}
+
+
+/** Choisit le joueur qui reçoit les points avec ↑ / ↓. */
+function moveTarget(delta) {
+  const g = state.game;
+  if (!g) return;
+  const count = g.players.length;
+  selectTarget((g.target + delta + count) % count);
+  const card = $('#player-list .player-card.is-target');
+  if (card && activeTab() === 'players') card.scrollIntoView({ block: 'nearest' });
+}
+
+/** Bouton rapide déclenché au clavier : même effet qu'un clic, avec un retour visuel. */
+function pressQuickButton(index) {
+  const value = state.quickButtons[index];
+  if (value === undefined) return;
+  addPoints(value);
+  const button = $$('#quick-grid .quick-btn')[index];
+  if (button) button.classList.add('is-pressed');
+}
+
+function openShortcuts() {
+  openDialog($('#shortcuts-dialog'));
+}
+
+function isTypingTarget(target) {
+  return Boolean(target && target.closest && target.closest('input, textarea, select, [contenteditable="true"]'));
+}
+
+/** Les raccourcis ne servent que sur l'écran de partie, sans fenêtre ouverte ni champ en cours de saisie. */
+function isGameShortcutContext(event) {
+  return state.screen === 'game' && Boolean(state.game) && !$('dialog[open]') && !isTypingTarget(event.target);
+}
+
+/**
+ * Raccourcis clavier de la partie. Renvoie true si la touche a été utilisée.
+ * Les chiffres utilisent event.code (touche physique) : ils marchent aussi en AZERTY sans Maj.
+ */
+function handleGameShortcut(event) {
+  if (!isGameShortcutContext(event) || event.altKey) return false;
+  const { key, code } = event;
+  const letter = key.length === 1 ? key.toLowerCase() : '';
+  const once = (fn) => {
+    if (!event.repeat) fn(); // touche maintenue : on n'enchaîne pas les joueurs
+    return true;
+  };
+
+  if (event.ctrlKey || event.metaKey) {
+    return letter === 'z' && !event.shiftKey ? once(undoLastEntry) : false;
+  }
+  // Sur un onglet choisi au clavier, ← et → changent d'onglet.
+  const onTab = event.target.getAttribute && event.target.getAttribute('role') === 'tab';
+  if (onTab && (key === 'ArrowLeft' || key === 'ArrowRight')) return false;
+
+  if (key === ' ' || key === 'ArrowRight') return once(() => changeTurn(1));
+  if (key === 'ArrowLeft') return once(() => changeTurn(-1));
+  if (key === 'ArrowUp') { moveTarget(-1); return true; }
+  if (key === 'ArrowDown') { moveTarget(1); return true; }
+  if (key === 'Backspace' || key === 'Delete') return once(undoLastEntry);
+
+  const digit = /^Digit(\d)$/.exec(code);
+  if (digit) {
+    const index = (Number(digit[1]) + 9) % 10; // 1 → 1er bouton … 0 → 10e bouton
+    if (index < state.quickButtons.length) return once(() => pressQuickButton(index));
+  }
+  if (/^Numpad\d$/.test(code) && /^\d$/.test(key)) return once(() => openCustomDialog({ text: key }));
+  if (key === '+') return once(() => openCustomDialog({ sign: 1 }));
+  if (key === '-' || key === '−') return once(() => openCustomDialog({ sign: -1 }));
+  if (letter === 's') return once(() => openCustomDialog());
+  if (letter === 'p') return once(togglePause);
+  if (key === '?' || letter === 'h') return once(openShortcuts);
+  return false;
 }
 
 
@@ -1189,16 +1280,18 @@ function confirmDialog({ title, message, confirmLabel = 'Confirmer', danger = fa
 
 /* --- Saisie libre -------------------------------------------------------- */
 
-function openCustomDialog() {
+function openCustomDialog({ sign = 1, text = '' } = {}) {
   const g = state.game;
   if (!g) return;
-  state.customSign = 1;
+  const input = $('#custom-value');
+  state.customSign = sign < 0 ? -1 : 1;
   state.customTarget = g.target;
-  $('#custom-value').value = '';
+  input.value = text;
   renderCustomTargets();
   updateCustomPreview();
   openDialog($('#custom-dialog'));
-  $('#custom-value').focus();
+  input.focus();
+  input.setSelectionRange(text.length, text.length);
 }
 
 function renderCustomTargets() {
@@ -1676,7 +1769,8 @@ function showToast(message, duration = 1800) {
   const toast = $('#toast');
   if (!toast) return;
   const anchor = $('.screen:not([hidden]) [data-toast-anchor]');
-  if (anchor && anchor.offsetHeight) toast.style.setProperty('--toast-offset', `${anchor.offsetHeight + 12}px`);
+  const sidePanel = anchor && isDesktop() && anchor.classList.contains('control-panel');
+  if (anchor && anchor.offsetHeight && !sidePanel) toast.style.setProperty('--toast-offset', `${anchor.offsetHeight + 12}px`);
   else toast.style.removeProperty('--toast-offset');
   toast.textContent = message;
   toast.classList.add('is-visible');
@@ -1705,7 +1799,8 @@ const ACTIONS = {
   'end-game': endGame,
   'abandon-game': abandonGame,
   // Saisie libre
-  'open-custom': openCustomDialog,
+  'open-custom': () => openCustomDialog(),
+  'open-shortcuts': openShortcuts,
   'custom-sign': toggleCustomSign,
   'custom-target': (el) => selectCustomTarget(Number(el.dataset.index)),
   // Boutons rapides
@@ -1733,6 +1828,8 @@ function onClick(event) {
   if (!action) return;
   if (element.hasAttribute('data-close-menu')) $('#menu-dialog').close('cancel');
   action(element, event);
+  // Après un clic souris sur un onglet, ← et → redeviennent « joueur précédent / suivant ».
+  if (event.detail > 0 && element.getAttribute('role') === 'tab') element.blur();
 }
 
 function onInput(event) {
@@ -1766,6 +1863,13 @@ function onChange(event) {
 function onKeydown(event) {
   const target = event.target;
 
+  // Ctrl+Entrée (⌘+Entrée sur Mac) sur la configuration : lance la partie.
+  if (event.key === 'Enter' && (event.ctrlKey || event.metaKey) && state.screen === 'setup' && !$('dialog[open]')) {
+    event.preventDefault();
+    startGame();
+    return;
+  }
+
   // Entrée dans un prénom : passe au joueur suivant au lieu d'envoyer le formulaire.
   if (event.key === 'Enter' && target.matches('[data-name-index]')) {
     event.preventDefault();
@@ -1777,12 +1881,15 @@ function onKeydown(event) {
 
   // Flèches gauche/droite pour naviguer entre les onglets.
   if (target.getAttribute('role') === 'tab' && (event.key === 'ArrowLeft' || event.key === 'ArrowRight')) {
-    const tabs = $$('#screen-game [role="tab"]');
+    const tabs = $$('#screen-game [role="tab"]').filter((tab) => tab.offsetParent !== null);
     const index = tabs.indexOf(target);
     const next = tabs[(index + (event.key === 'ArrowRight' ? 1 : -1) + tabs.length) % tabs.length];
     setTab(next.dataset.tab);
     next.focus();
+    return;
   }
+
+  if (handleGameShortcut(event)) event.preventDefault();
 }
 
 function bindEvents() {
@@ -1790,6 +1897,15 @@ function bindEvents() {
   document.addEventListener('input', onInput);
   document.addEventListener('change', onChange);
   document.addEventListener('keydown', onKeydown);
+  // Espace = « Joueur suivant » : on empêche aussi le bouton qui a le focus de se déclencher.
+  document.addEventListener('keyup', (event) => {
+    if (event.key === ' ' && isGameShortcutContext(event)) event.preventDefault();
+  });
+
+  // Passage téléphone ↔ ordinateur (fenêtre redimensionnée, tablette tournée…).
+  const onLayoutChange = () => { if (state.screen === 'game') renderGame(); };
+  if (DESKTOP_QUERY.addEventListener) DESKTOP_QUERY.addEventListener('change', onLayoutChange);
+  else DESKTOP_QUERY.addListener(onLayoutChange);
   document.addEventListener('pointerdown', primeAudio, { passive: true });
 
   // Garde le clavier ouvert quand on touche « ± » ou un joueur dans les dialogues.
@@ -1833,6 +1949,10 @@ function init() {
   dom.turnTimer = $('#turn-timer');
   dom.timerFill = $('#turn-timer-fill');
   dom.timerText = $('#turn-timer-text');
+
+  // Libellés des raccourcis adaptés au Mac (⌘ au lieu de Ctrl).
+  $$('.js-undo-key').forEach((el) => { el.textContent = IS_MAC ? '⌘Z' : 'Ctrl+Z'; });
+  $$('.js-mod').forEach((el) => { el.textContent = IS_MAC ? '⌘' : 'Ctrl'; });
 
   bindEvents();
   // Une partie en cours est reprise automatiquement après fermeture ou rechargement.
