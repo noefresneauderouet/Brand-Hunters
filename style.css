@@ -1305,6 +1305,17 @@ kbd {
   color: var(--minus-text);
 }
 
+.float-delta.is-pending {
+  color: var(--text-muted);
+}
+
+/* Pénalité en attente : compte seulement si la réponse est trouvée */
+.badge-pending {
+  border: 1px dashed currentColor;
+  background: var(--minus-soft);
+  color: var(--minus-text);
+}
+
 .last-entry {
   font-weight: 700;
   font-variant-numeric: tabular-nums;
@@ -1504,6 +1515,20 @@ kbd {
 .cell-sum {
   display: block;
   font-weight: 800;
+}
+
+.cell-detail .is-pending {
+  color: var(--minus-text);
+  font-style: italic;
+}
+
+.cell-detail .is-cancelled {
+  opacity: 0.6;
+  text-decoration: line-through;
+}
+
+.sheet td.is-void .cell-sum {
+  color: var(--text-muted);
 }
 
 .cell-detail {

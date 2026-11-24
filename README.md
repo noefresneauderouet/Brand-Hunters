@@ -20,7 +20,18 @@ Toutes les données restent dans le navigateur (`localStorage`).
   - boutons « Joueur suivant » et « Joueur précédent » ;
   - boutons rapides verts (+) et rouges (−), saisie libre de n'importe quel nombre et bouton « Annuler » ;
   - onglets « Classement » (en direct) et « Tour par tour » (feuille de score) ;
-  - touchez un autre joueur pour lui donner des points hors de son tour.
+  - touchez un autre joueur pour lui donner des points hors de son tour ;
+  - **pénalités seulement si la réponse est trouvée** (règle Brand Hunters, activée par défaut, modifiable dans la configuration et le menu ⋯). Voir ci-dessous.
+
+### Pénalités : seulement si la réponse est trouvée
+
+Dans Brand Hunters, chaque mauvaise réponse coûte −50, mais seulement si le joueur finit par trouver la marque.
+
+- **Pendant le tour :** les points négatifs d'un joueur restent **en attente**. Ils sont affichés sur sa carte (« −100 en attente ») sans toucher à son total.
+- **Il trouve :** dès qu'on lui donne des points positifs dans le même tour, les pénalités sont appliquées (+200 avec deux −50 donnent +100 au total).
+- **Il ne trouve pas :** au « Joueur suivant », ses pénalités sont **annulées**. Un message le signale, et elles apparaissent barrées dans « Tour par tour ».
+- **Retour en arrière :** « Joueur précédent » remet les pénalités en attente, et « Annuler » fonctionne normalement.
+- **Fin de partie :** « Terminer la partie » annule les pénalités encore en attente, et la confirmation l'indique.
 - **Boutons rapides personnalisables** (bouton « Boutons » ou menu ⋯) : modifier, ajouter (12 max) ou supprimer des boutons, et revenir aux valeurs par défaut. Les réglages sont gardés pour les parties suivantes.
 - **Timer** :
   - chronomètre de partie avec pause et reprise (touchez le chrono) ;
@@ -113,6 +124,7 @@ Cinq clés, toutes préfixées par `compteurPoints.v1.` (le `v1` permettra de fa
   "id": "mwumvyiep3r1gy",
   "startedAt": 1795521072758,
   "winRule": "high",
+  "conditionalPenalties": true,
   "orderMode": "manual",
   "players": [
     { "id": "p1", "slot": 1, "name": "Marc", "color": "#3e63dd" },
@@ -122,8 +134,8 @@ Cinq clés, toutes préfixées par `compteurPoints.v1.` (le `v1` permettra de fa
   "target": 0,
   "round": 2,
   "entries": [
-    { "p": "p1", "v": 200, "r": 1, "t": 1795521080000 },
-    { "p": "p0", "v": -50, "r": 1, "t": 1795521085000 }
+    { "p": "p1", "v": 200, "r": 1, "k": 0, "t": 1795521080000 },
+    { "p": "p0", "v": -50, "r": 1, "k": 1, "t": 1795521085000 }
   ],
   "clock":     { "accMs": 120000, "since": 1795521090000 },
   "turnTimer": { "enabled": true, "durationMs": 60000, "custom": false, "accMs": 0, "since": 1795521090000, "expired": false }
@@ -132,8 +144,15 @@ Cinq clés, toutes préfixées par `compteurPoints.v1.` (le `v1` permettra de fa
 
 - `players` est rangé **dans l'ordre de passage**. `slot` est la place du joueur dans le formulaire (elle fixe sa couleur).
 - `current` désigne le joueur dont c'est le tour. `target` désigne celui qui reçoit les points (en général le même). `round` est le numéro du tour.
-- **Les scores ne sont pas stockés, ils sont recalculés** à partir de `entries`, le journal de toutes les saisies (`p` = joueur, `v` = points, `r` = tour, `t` = horodatage). Ce journal suffit à tout :
-  - total d'un joueur = somme de ses saisies ;
+- **Les scores ne sont pas stockés, ils sont recalculés** à partir de `entries`, le journal de toutes les saisies. Chaque saisie contient :
+  - `p` : le joueur ;
+  - `v` : les points ;
+  - `r` : le tour (chaque joueur a joué une fois) ;
+  - `k` : le tour de jeu, c'est-à-dire le passage d'un joueur, numéroté depuis le début de la partie ;
+  - `t` : l'horodatage.
+
+  Ce journal suffit à tout :
+  - total d'un joueur = somme de ses saisies qui comptent. Avec `conditionalPenalties`, un point négatif ne compte que si le même joueur a aussi des points positifs avec le même `k`. Sinon il est « en attente » (tour en cours) ou « annulé » (tour terminé). Cet état est recalculé à chaque fois, rien n'est effacé ;
   - « Annuler » = retirer la dernière saisie ;
   - feuille « Tour par tour » = saisies regroupées par tour.
 - **Les temps sont des horodatages**, pas des compteurs : `accMs` est le temps déjà cumulé et `since` le début de la période en cours (`null` = en pause). Le chronomètre reste donc juste après un rechargement de la page ou une mise en veille du téléphone.
@@ -150,6 +169,7 @@ Résumé compact, sans le détail des saisies :
   "durationMs": 17431,
   "rounds": 2,
   "winRule": "high",
+  "conditionalPenalties": true,
   "orderMode": "manual",
   "turnTimer": { "enabled": true, "seconds": 90, "custom": true },
   "players": [

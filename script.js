@@ -291,6 +291,7 @@ function defaultSetup() {
     orderMode: 'random',
     order: shuffle(range(4)),
     winRule: 'high',
+    conditionalPenalties: true,
     turnTimer: { enabled: false, seconds: DEFAULT_TURN_SECONDS, custom: false },
   };
 }
@@ -311,6 +312,7 @@ function loadSetup() {
     ? saved.order.slice()
     : (setup.orderMode === 'random' ? shuffle(range(setup.count)) : range(setup.count));
   setup.winRule = saved.winRule === 'low' ? 'low' : 'high';
+  setup.conditionalPenalties = saved.conditionalPenalties !== false;
   setup.turnTimer = normalizeTurnTimer(saved.turnTimer);
   return setup;
 }
@@ -354,6 +356,7 @@ function loadGame() {
   game.target = clamp(game.target | 0, 0, game.players.length - 1);
   game.round = Math.max(1, game.round | 0);
   game.winRule = game.winRule === 'low' ? 'low' : 'high';
+  game.conditionalPenalties = game.conditionalPenalties === true;
   return game;
 }
 
@@ -415,6 +418,7 @@ function renderSetup() {
   renderOrderList();
   checkRadio('orderMode', s.orderMode);
   checkRadio('winRule', s.winRule);
+  $('#conditional-penalties').checked = s.conditionalPenalties;
   renderTimerPicker('setup');
 }
 
@@ -753,7 +757,7 @@ function onTimerCustomInput(field, committed) {
 }
 
 /** Pré-remplit la configuration avec les joueurs et réglages d'une partie. */
-function prefillSetup({ players, winRule, orderMode, turnTimer }) {
+function prefillSetup({ players, winRule, orderMode, turnTimer, conditionalPenalties }) {
   const list = players.slice(0, MAX_PLAYERS);
   const count = clamp(list.length, MIN_PLAYERS, MAX_PLAYERS);
   let slots = list.map((p) => p.slot);
@@ -769,6 +773,7 @@ function prefillSetup({ players, winRule, orderMode, turnTimer }) {
     orderMode: manual ? 'manual' : 'random',
     order: manual ? slots : shuffle(range(count)),
     winRule: winRule === 'low' ? 'low' : 'high',
+    conditionalPenalties: conditionalPenalties !== false,
     turnTimer: normalizeTurnTimer(turnTimer),
   };
   state.showSetupErrors = false;
@@ -804,6 +809,7 @@ function startGame() {
     id: uid(),
     startedAt: now,
     winRule: s.winRule,
+    conditionalPenalties: s.conditionalPenalties,
     orderMode: s.orderMode,
     players: s.order.map((slot) => ({
       id: `p${slot}`,
@@ -836,13 +842,59 @@ function startGame() {
    6. Écran « Partie »
    ========================================================================== */
 
-function getTotals(game) {
+/** Numéro du tour de jeu en cours (un tour de jeu = le passage d'un joueur). */
+const turnIndex = (game) => (game.round - 1) * game.players.length + game.current;
+
+/*
+ * Pénalités conditionnelles (règle Brand Hunters) : un point négatif (ex. −50 par
+ * mauvaise réponse) ne compte que si le même joueur marque aussi des points
+ * positifs pendant le même tour de jeu, c'est-à-dire s'il finit par trouver.
+ * Chaque saisie a donc un état :
+ *   counted   → compte dans le total ;
+ *   pending   → tour en cours, la réponse n'a pas (encore) été trouvée ;
+ *   cancelled → tour terminé sans bonne réponse : la pénalité est annulée.
+ * Cet état est recalculé à partir des saisies, rien n'est effacé : « Joueur
+ * précédent » et « Annuler » remettent tout d'aplomb.
+ */
+function computeScores(game, { finished = false } = {}) {
   const totals = {};
-  game.players.forEach((p) => { totals[p.id] = 0; });
-  game.entries.forEach((e) => {
-    if (e.p in totals) totals[e.p] = roundScore(totals[e.p] + e.v);
+  const pending = {};
+  game.players.forEach((p) => { totals[p.id] = 0; pending[p.id] = 0; });
+  const scoredTurns = new Set(game.entries.filter((e) => e.v > 0 && e.k !== undefined).map((e) => `${e.k}|${e.p}`));
+  const current = turnIndex(game);
+
+  const statuses = game.entries.map((e) => {
+    let status = 'counted';
+    if (game.conditionalPenalties && e.v < 0 && e.k !== undefined && !scoredTurns.has(`${e.k}|${e.p}`)) {
+      status = e.k === current && !finished ? 'pending' : 'cancelled';
+    }
+    if (e.p in totals) {
+      if (status === 'counted') totals[e.p] = roundScore(totals[e.p] + e.v);
+      if (status === 'pending') pending[e.p] = roundScore(pending[e.p] + e.v);
+    }
+    return status;
   });
-  return totals;
+  return { totals, pending, statuses };
+}
+
+function getTotals(game, options) {
+  return computeScores(game, options).totals;
+}
+
+/** Le joueur a-t-il déjà marqué des points positifs pendant ce tour de jeu ? */
+function hasScoredThisTurn(game, playerId) {
+  const k = turnIndex(game);
+  return game.entries.some((e) => e.p === playerId && e.k === k && e.v > 0);
+}
+
+/** Joueurs ayant des pénalités en attente : [{ name, amount }]. */
+function pendingPenalties(game) {
+  const { pending } = computeScores(game);
+  return game.players.filter((p) => pending[p.id] < 0).map((p) => ({ name: p.name, amount: pending[p.id] }));
+}
+
+function describePenalties(list) {
+  return list.map((item) => `${item.name} ${formatSigned(item.amount)}`).join(', ');
 }
 
 /** Classement « sportif » : deux scores égaux partagent le même rang (1, 1, 3…). */
@@ -861,13 +913,13 @@ function computeRanking(game, totals = getTotals(game)) {
 function renderGame() {
   const g = state.game;
   if (!g) return;
-  const totals = getTotals(g);
-  const ranking = computeRanking(g, totals);
+  const scores = computeScores(g);
+  const ranking = computeRanking(g, scores.totals);
   renderGameBar(g);
   renderTabs();
-  renderPlayerList(g, totals, ranking);
+  renderPlayerList(g, scores, ranking);
   renderRanking(g, ranking);
-  renderSheet(g, totals);
+  renderSheet(g, scores);
   renderControls(g);
   tick();
 }
@@ -912,10 +964,11 @@ function setTab(tab) {
   }
 }
 
-function renderPlayerList(g, totals, ranking) {
+function renderPlayerList(g, scores, ranking) {
+  const { totals, pending, statuses } = scores;
   const rankById = new Map(ranking.map((row) => [row.id, row.rank]));
-  const lastById = new Map();
-  g.entries.forEach((e) => lastById.set(e.p, e.v));
+  const lastById = new Map(); // dernière saisie qui compte
+  g.entries.forEach((e, i) => { if (statuses[i] === 'counted') lastById.set(e.p, e.v); });
   const showRanks = g.entries.length > 0;
 
   $('#player-list').innerHTML = g.players.map((p, i) => {
@@ -928,7 +981,9 @@ function renderPlayerList(g, totals, ranking) {
       isCurrent ? `<span class="badge badge-turn">${icon('star')}À son tour</span>` : '',
       isTarget && !isCurrent ? '<span class="badge badge-target">Sélectionné</span>' : '',
       showRanks ? `<span class="badge badge-rank" data-rank="${Math.min(rank, 4)}">${rankLabel(rank)}</span>` : '',
-      last !== undefined ? `<span class="last-entry ${last < 0 ? 'is-neg' : 'is-pos'}">dernier : ${formatSigned(last)}</span>` : '',
+      pending[p.id] < 0
+        ? `<span class="badge badge-pending" title="Compte seulement si la réponse est trouvée pendant ce tour">${formatSigned(pending[p.id])} en attente</span>`
+        : (last !== undefined ? `<span class="last-entry ${last < 0 ? 'is-neg' : 'is-pos'}">dernier : ${formatSigned(last)}</span>` : ''),
     ].join('');
     return `
       <li data-player-id="${escapeHtml(p.id)}">
@@ -976,14 +1031,16 @@ function renderRanking(g, ranking) {
 }
 
 /** Feuille de score : une ligne par tour, une colonne par joueur. */
-function renderSheet(g, totals) {
+function renderSheet(g, scores) {
+  const { totals, statuses } = scores;
   const rounds = g.entries.reduce((max, e) => Math.max(max, e.r), g.round);
   const cells = new Map();
-  g.entries.forEach((e) => {
+  g.entries.forEach((e, i) => {
     const key = `${e.r}|${e.p}`;
     if (!cells.has(key)) cells.set(key, []);
-    cells.get(key).push(e.v);
+    cells.get(key).push({ v: e.v, status: statuses[i] });
   });
+  const STATUS_TITLES = { pending: 'En attente : compte si la réponse est trouvée', cancelled: 'Annulée : réponse non trouvée' };
 
   const head = g.players.map((p) => `
     <th scope="col"><span class="sheet-player"><span class="dot" style="${colorVars(p.color)}"></span><span class="sheet-name">${escapeHtml(p.name)}</span></span></th>`).join('');
@@ -993,21 +1050,26 @@ function renderSheet(g, totals) {
   for (let r = 1; r <= rounds; r++) {
     body += `<tr${r === g.round ? ' class="is-current-round"' : ''}><th scope="row">${r}</th>`;
     g.players.forEach((p) => {
-      const values = cells.get(`${r}|${p.id}`);
-      if (!values) {
+      const items = cells.get(`${r}|${p.id}`);
+      if (!items) {
         body += '<td class="is-empty">·</td>';
         return;
       }
-      const sum = roundScore(values.reduce((a, b) => a + b, 0));
-      const detail = values.length > 1 ? `<span class="cell-detail">${values.map(formatSigned).join(' ')}</span>` : '';
-      body += `<td class="${sum < 0 ? 'is-neg' : 'is-pos'}"><span class="cell-sum">${formatSigned(sum)}</span>${detail}</td>`;
+      const counted = items.filter((item) => item.status === 'counted');
+      const sum = roundScore(counted.reduce((total, item) => total + item.v, 0));
+      const showDetail = items.length > 1 || counted.length !== items.length;
+      const detail = showDetail ? `<span class="cell-detail">${items.map((item) => (item.status === 'counted'
+        ? formatSigned(item.v)
+        : `<span class="is-${item.status}" title="${STATUS_TITLES[item.status]}">${formatSigned(item.v)}</span>`)).join(' ')}</span>` : '';
+      const cls = !counted.length ? 'is-void' : (sum < 0 ? 'is-neg' : 'is-pos');
+      body += `<td class="${cls}"><span class="cell-sum">${counted.length ? formatSigned(sum) : '0'}</span>${detail}</td>`;
     });
     body += '</tr>';
   }
 
-  $('#sheet-note').textContent = g.entries.length
-    ? 'Points marqués à chaque tour (un tour = chaque joueur a joué une fois).'
-    : 'Aucun point saisi pour l’instant.';
+  $('#sheet-note').textContent = !g.entries.length
+    ? 'Aucun point saisi pour l’instant.'
+    : `Points marqués à chaque tour (un tour = chaque joueur a joué une fois).${g.conditionalPenalties ? ' Valeurs barrées : pénalités annulées, réponse non trouvée.' : ''}`;
   $('#sheet-wrap').innerHTML = `
     <table class="sheet">
       <thead>
@@ -1057,19 +1119,24 @@ function addPoints(value) {
   if (!g || !Number.isFinite(value) || value === 0) return;
   const player = g.players[g.target];
   const points = roundScore(value);
-  g.entries.push({ p: player.id, v: points, r: g.round, t: Date.now() });
+  const pendingBefore = computeScores(g).pending[player.id];
+  const willWait = g.conditionalPenalties && points < 0 && !hasScoredThisTurn(g, player.id);
+  // k = tour de jeu de la saisie (sert aux pénalités conditionnelles)
+  g.entries.push({ p: player.id, v: points, r: g.round, k: turnIndex(g), t: Date.now() });
   saveGame();
   renderGame();
-  animateScore(player.id, points);
-  showToast(`${formatSigned(points)} pour ${player.name}`);
+  animateScore(player.id, points, willWait);
+  if (willWait) showToast(`${formatSigned(points)} pour ${player.name} · en attente`);
+  else if (points > 0 && pendingBefore < 0) showToast(`${formatSigned(points)} pour ${player.name} · pénalités appliquées (${formatSigned(pendingBefore)})`, 2600);
+  else showToast(`${formatSigned(points)} pour ${player.name}`);
 }
 
-function animateScore(playerId, value) {
+function animateScore(playerId, value, pending = false) {
   const card = $(`#player-list li[data-player-id="${CSS.escape(playerId)}"] .player-card`);
   if (!card) return;
-  $('.player-score', card).classList.add('is-bumped');
+  if (!pending) $('.player-score', card).classList.add('is-bumped');
   const delta = document.createElement('span');
-  delta.className = `float-delta ${value < 0 ? 'is-neg' : 'is-pos'}`;
+  delta.className = `float-delta ${pending ? 'is-pending' : (value < 0 ? 'is-neg' : 'is-pos')}`;
   delta.textContent = formatSigned(value);
   card.append(delta);
   setTimeout(() => delta.remove(), 1000);
@@ -1100,6 +1167,7 @@ function changeTurn(direction) {
     g.round -= 1;
   }
   const wasPaused = isPaused(g);
+  const cancelled = pendingPenalties(g); // réponse non trouvée : ces pénalités sont annulées
   g.current = next;
   g.target = next;
   if (wasPaused) resumeClock(g); // passer au joueur suivant relance la partie
@@ -1107,7 +1175,10 @@ function changeTurn(direction) {
   saveGame();
   renderGame();
   scrollCurrentIntoView();
-  if (wasPaused) showToast('Chronomètre relancé');
+  const messages = [];
+  if (cancelled.length) messages.push(`Pénalités annulées : ${describePenalties(cancelled)}`);
+  if (wasPaused) messages.push('Chronomètre relancé');
+  if (messages.length) showToast(messages.join(' · '), cancelled.length ? 3000 : 1800);
 }
 
 function scrollCurrentIntoView() {
@@ -1486,10 +1557,20 @@ function updateCustomPreview() {
     : `${negative ? 'Retirer' : 'Ajouter'} ${formatNumber(Math.abs(value))}`;
 
   const player = g.players[state.customTarget];
-  const total = getTotals(g)[player.id];
-  $('#custom-preview').textContent = value === null
-    ? `${player.name} : ${formatNumber(total)}`
-    : `${player.name} : ${formatNumber(total)} → ${formatNumber(roundScore(total + value))}`;
+  const { totals, pending } = computeScores(g);
+  const total = totals[player.id];
+  const waiting = pending[player.id];
+  let preview = `${player.name} : ${formatNumber(total)}`;
+  if (value !== null && g.conditionalPenalties && value < 0 && !hasScoredThisTurn(g, player.id)) {
+    preview += ` · ${formatSigned(roundScore(waiting + value))} en attente (compte si la réponse est trouvée)`;
+  } else if (value !== null) {
+    const applied = value > 0 ? waiting : 0; // une bonne réponse applique les pénalités en attente
+    preview += ` → ${formatNumber(roundScore(total + value + applied))}`;
+    if (applied < 0) preview += ` (pénalités ${formatSigned(applied)} comprises)`;
+  } else if (waiting < 0) {
+    preview += ` · ${formatSigned(waiting)} en attente`;
+  }
+  $('#custom-preview').textContent = preview;
 }
 
 function toggleCustomSign() {
@@ -1625,6 +1706,7 @@ function openMenu() {
   if (!g) return;
   renderTimerPicker('menu');
   $('#pref-sound').checked = state.prefs.sound;
+  $('#menu-conditional').checked = Boolean(g.conditionalPenalties);
   $('#wake-status').textContent = getWakeLockStatus();
   openDialog($('#menu-dialog'));
 }
@@ -1662,7 +1744,7 @@ function setSoundPref(enabled) {
 
 /** Résumé compact d'une partie, tel qu'il est enregistré dans l'historique. */
 function buildResult(game, now = Date.now()) {
-  const totals = getTotals(game);
+  const totals = getTotals(game, { finished: true }); // pénalités encore en attente = annulées
   const ranking = computeRanking(game, totals);
   const rankById = new Map(ranking.map((row) => [row.id, row.rank]));
   const lastEntryRound = game.entries.reduce((max, e) => Math.max(max, e.r), 0);
@@ -1675,6 +1757,7 @@ function buildResult(game, now = Date.now()) {
     durationMs: gameElapsed(game, now),
     rounds,
     winRule: game.winRule,
+    conditionalPenalties: Boolean(game.conditionalPenalties),
     orderMode: game.orderMode,
     turnTimer: {
       enabled: Boolean(game.turnTimer.enabled),
@@ -1702,11 +1785,13 @@ async function endGame() {
   const g = state.game;
   if (!g) return;
   const hasScores = g.entries.length > 0;
+  const waiting = pendingPenalties(g);
   const confirmed = await confirmDialog({
     title: 'Terminer la partie ?',
-    message: hasScores
+    message: (hasScores
       ? 'Le classement final sera affiché et la partie enregistrée dans l’historique.'
-      : 'Aucun point n’a été saisi : la partie ne sera pas enregistrée dans l’historique.',
+      : 'Aucun point n’a été saisi : la partie ne sera pas enregistrée dans l’historique.')
+      + (waiting.length ? ` Les pénalités en attente (${describePenalties(waiting)}) seront annulées.` : ''),
     confirmLabel: 'Terminer',
   });
   if (!confirmed || !state.game) return;
@@ -2004,6 +2089,17 @@ function onChange(event) {
   else if (target.name === 'winRule') {
     state.setup.winRule = target.value === 'low' ? 'low' : 'high';
     saveSetup();
+  } else if (target.id === 'conditional-penalties') {
+    state.setup.conditionalPenalties = target.checked;
+    saveSetup();
+  } else if (target.id === 'menu-conditional') {
+    if (state.game) {
+      state.game.conditionalPenalties = target.checked;
+      state.setup.conditionalPenalties = target.checked; // gardé pour la prochaine partie
+      saveSetup();
+      saveGame();
+      renderGame();
+    }
   } else if (target.id === 'turn-timer-enabled') {
     applyTimerConfig('setup', { enabled: target.checked });
   } else if (target.id === 'menu-turn-enabled') {

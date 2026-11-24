@@ -105,11 +105,18 @@
           </section>
 
           <section class="card card-rule" aria-labelledby="rule-title">
-            <h2 class="card-title" id="rule-title">Règle de victoire</h2>
-            <div class="segmented segmented-stack" role="radiogroup" aria-labelledby="rule-title">
+            <h2 class="card-title" id="rule-title">Règles</h2>
+            <div class="segmented segmented-stack" role="radiogroup" aria-label="Règle de victoire">
               <label class="segment"><input type="radio" name="winRule" value="high"><span>Le score le plus <strong>haut</strong> gagne</span></label>
               <label class="segment"><input type="radio" name="winRule" value="low"><span>Le score le plus <strong>bas</strong> gagne</span></label>
             </div>
+            <label class="switch-row">
+              <span class="switch-text">
+                Pénalités seulement si la réponse est trouvée
+                <small>Les points négatifs (ex. −50 par mauvaise réponse) restent en attente pendant le tour. Ils comptent si le joueur marque des points avant « Joueur suivant », sinon ils sont annulés.</small>
+              </span>
+              <input type="checkbox" class="switch" id="conditional-penalties">
+            </label>
           </section>
 
           <section class="card card-timer" aria-labelledby="timer-title">
@@ -352,6 +359,10 @@
         <label class="menu-row">
           <span>Son à la fin du minuteur</span>
           <input type="checkbox" class="switch" id="pref-sound">
+        </label>
+        <label class="menu-row">
+          <span>Pénalités seulement si la réponse est trouvée</span>
+          <input type="checkbox" class="switch" id="menu-conditional">
         </label>
         <p class="menu-note" id="wake-status"></p>
       </div>
