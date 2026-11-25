@@ -65,14 +65,14 @@ const ALARM_BEEPS = [[0, 0.16, 880], [0.24, 0.16, 880], [0.48, 0.16, 880], [0.8,
 
 /** The four bounty tiers of the game cards. */
 const BOUNTY_TIERS = Object.freeze([
-  { key: 'easy', label: 'Easy', stars: 1 },
-  { key: 'medium', label: 'Medium', stars: 2 },
-  { key: 'difficult', label: 'Difficult', stars: 3 },
+  { key: 'easy', label: 'Pickpocket', stars: 1 },
+  { key: 'medium', label: 'Bandit', stars: 2 },
+  { key: 'difficult', label: 'Outlaw', stars: 3 },
   { key: 'wanted', label: 'Most Wanted', stars: 4 },
 ]);
 /** Default points; “penalty” is the wrong-answer value (applied as a negative). */
 const DEFAULT_BOUNTIES = Object.freeze({ easy: 100, medium: 200, difficult: 300, wanted: 400, bonus: 50, penalty: 50 });
-const BOUNTY_LABELS = Object.freeze({ easy: 'Easy', medium: 'Medium', difficult: 'Difficult', wanted: 'Most Wanted', bonus: 'Bonus', penalty: 'Wrong answer' });
+const BOUNTY_LABELS = Object.freeze({ easy: 'Pickpocket', medium: 'Bandit', difficult: 'Outlaw', wanted: 'Most Wanted', bonus: 'Bonus', penalty: 'Wrong answer' });
 
 /** One star colour per hunter (the 4 tier colours first, then western tones). */
 const PLAYER_COLORS = Object.freeze([

@@ -38,7 +38,7 @@ Chaque page a sa propre adresse, ce qui fait aussi fonctionner le bouton « reto
   - **Joueurs :** de 2 à 10 chasseurs, chacun avec une étoile de couleur. Les noms sont obligatoires et doivent être différents. Une icône corbeille retire un chasseur.
   - **Ordre de passage :** c'est l'ordre de la liste. « Shuffle » fait un tirage au sort, à refaire autant de fois qu'on veut. Pour un ordre manuel, on glisse les poignées ⠿ (ou flèches ↑ ↓ au clavier).
   - **Round timer :** les flèches proposent Off, 30, 45, 50, 60 ou 75 s. On peut aussi taper n'importe quelle durée de 5 s à 60 min (`90`, `1:30`…).
-  - **Bounty :** les primes Easy, Medium, Difficult et Most Wanted, plus Bonus et Wrong answer. « Edit » permet de changer les valeurs ; elles sont gardées pour les parties suivantes, avec un bouton « Reset to defaults ».
+  - **Bounty :** les primes Pickpocket (★), Bandit (★★), Outlaw (★★★) et Most Wanted (★★★★), plus Bonus et Wrong answer. « Edit » permet de changer les valeurs ; elles sont gardées pour les parties suivantes, avec un bouton « Reset to defaults ».
   - **House rules :** règle de victoire (score le plus haut ou le plus bas) et règle des mauvaises réponses (voir plus bas).
 - **The hunt**
   - **Current hunter :** le chasseur dont c'est le tour, avec ‹ › pour passer au précédent ou au suivant.
@@ -133,9 +133,9 @@ L'interface suit les maquettes Brand Hunters :
 | Variable | Usage |
 | --- | --- |
 | `--plum` `#2B1528` | Fond, texte sur les boutons orange |
-| `--easy-1` / `--easy-2` | Tuile Easy (vert) |
-| `--medium-1` / `--medium-2` | Tuile Medium (orange) |
-| `--difficult-1` / `--difficult-2` | Tuile Difficult (rouge) |
+| `--easy-1` / `--easy-2` | Tuile Pickpocket (vert) |
+| `--medium-1` / `--medium-2` | Tuile Bandit (orange) |
+| `--difficult-1` / `--difficult-2` | Tuile Outlaw (rouge) |
 | `--wanted-1` / `--wanted-2` | Tuile Most Wanted (violet) |
 
 **Typographies.** Elles sont hébergées dans `fonts/` (licence SIL OFL, fichiers de licence inclus). Aucun appel n'est fait à Google Fonts : rien n'est transmis à un service tiers (RGPD), et les polices fonctionnent hors ligne.
