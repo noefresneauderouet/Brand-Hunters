@@ -219,31 +219,6 @@ h1[tabindex="-1"]:focus {
   text-align: center;
 }
 
-/* Keyboard hints: only with a mouse and a keyboard */
-kbd {
-  display: inline-block;
-  min-width: 1.8em;
-  padding: 1px 6px;
-  border: 1px solid rgba(248, 199, 135, 0.45);
-  border-bottom-width: 2px;
-  border-radius: 6px;
-  background: rgba(18, 4, 14, 0.4);
-  color: var(--cream);
-  font-family: var(--font);
-  font-size: 0.75rem;
-  font-weight: 700;
-  font-style: normal;
-  line-height: 1.5;
-  text-align: center;
-  white-space: nowrap;
-}
-
-@media not all and (hover: hover) and (pointer: fine) {
-  .kbd,
-  .pointer-only {
-    display: none !important;
-  }
-}
 
 
 /* 3. Background scenery ===================================================== */
@@ -495,11 +470,6 @@ kbd {
   transform: scale(0.98);
 }
 
-.cta .kbd {
-  border-color: rgba(43, 21, 40, 0.35);
-  background: rgba(43, 21, 40, 0.1);
-  color: var(--plum);
-}
 
 .pill-btn {
   display: inline-flex;
@@ -1082,16 +1052,6 @@ button.tier:active {
   font-variant-numeric: tabular-nums;
 }
 
-.tier .kbd {
-  position: absolute;
-  top: 6px;
-  left: 6px;
-  min-width: 0;
-  padding: 0 5px;
-  border: 0;
-  background: rgba(0, 0, 0, 0.22);
-  font-size: 0.625rem;
-}
 
 /* Smaller tiles in the setup preview */
 .tier-row .tier {
@@ -1123,14 +1083,6 @@ button.tier:active {
 
 .extra-row .pill-btn {
   min-height: 42px;
-}
-
-.pill-btn-bonus .icon {
-  color: var(--cream);
-}
-
-.pill-btn-wrong .icon {
-  color: var(--minus-text);
 }
 
 .pill-btn-wrong .pill-value {
@@ -2007,30 +1959,6 @@ button.tier:active {
   text-transform: uppercase;
 }
 
-.shortcut-list {
-  display: flex;
-  flex-direction: column;
-  margin-top: 8px;
-}
-
-.shortcut-list > div {
-  display: grid;
-  grid-template-columns: 11em 1fr;
-  align-items: center;
-  gap: 12px;
-  min-height: 40px;
-  padding: 4px 0;
-  border-bottom: 1px solid var(--line);
-}
-
-.shortcut-list dt {
-  color: var(--muted);
-  font-size: 0.875rem;
-}
-
-.shortcut-list dd {
-  font-weight: 600;
-}
 
 
 /* 11b. Feedback ============================================================= */

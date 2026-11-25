@@ -10,7 +10,7 @@ L'interface est **en anglais**, comme le jeu et les maquettes. Cette documentati
 | --- | --- |
 | `index.html` | Structure des 5 pages (New game, The hunt, résultats, History, Rules) et des fenêtres de dialogue |
 | `style.css` | Mise en page téléphone, tablette et ordinateur, d'après les maquettes |
-| `script.js` | Logique : chasseurs, primes, tours, chronomètre, sauvegarde, historique, raccourcis clavier |
+| `script.js` | Logique : chasseurs, primes, tours, chronomètre, sauvegarde, historique, retours |
 | `api/feedback.js` | Petite fonction serveur (Vercel) qui envoie les messages de la page Feedback par e-mail avec Resend |
 | `logo-brand-hunters.svg` | Logo officiel |
 | `fonts/` | Polices Bitter et Rye hébergées avec le site, avec leurs licences |
@@ -27,7 +27,7 @@ Chaque page a sa propre adresse, ce qui fait aussi fonctionner le bouton « reto
 | `#/hunt` | **The hunt** : la partie en cours (visible seulement s'il y en a une) |
 | `#/results` | Affiche **WANTED** du gagnant et classement final |
 | `#/history` | **History** : parties terminées |
-| `#/rules` | **Rules** : vidéo des règles et raccourcis clavier |
+| `#/rules` | **Rules** : vidéo des règles |
 | `#/feedback` | **Feedback** : formulaire de retours, envoyé par e-mail |
 
 À l'ouverture du site, une partie en cours est reprise automatiquement. Sinon, la page New game s'affiche.
@@ -148,26 +148,7 @@ L'interface suit les maquettes Brand Hunters :
 
 À partir de 900 px de large, la navigation affiche ses libellés et New game passe sur deux colonnes. À partir de 1080 px, The hunt passe sur trois colonnes : chasseurs à gauche, chronomètre au centre, primes à droite.
 
-Avec une souris et un clavier, chaque bouton indique son raccourci. Ces indications sont masquées sur écran tactile.
-
-### Raccourcis clavier (page The hunt)
-
-| Touche | Action |
-| --- | --- |
-| `Espace` ou `→` | Chasseur suivant |
-| `←` | Chasseur précédent |
-| `1` `2` `3` `4` | Easy, Medium, Difficult, Most Wanted |
-| `B` | Bonus |
-| `X` ou `−` | Mauvaise réponse |
-| `S` ou `+` | Points libres (Custom) |
-| Pavé numérique | Taper directement un nombre, puis `Entrée` |
-| `↑` `↓` | Choisir qui reçoit les points |
-| `Ctrl+Z` (`⌘Z` sur Mac) ou `Retour arrière` | Annuler la dernière saisie |
-| `P` · `R` · `M` | Pause · relancer le minuteur · son |
-| `?` | Afficher les raccourcis |
-| `Échap` | Fermer une fenêtre |
-
-Sur New game, `Ctrl+Entrée` lance la partie. Les chiffres fonctionnent aussi en AZERTY sans appuyer sur `Maj`.
+Il n'y a pas de raccourcis clavier : tout se fait avec les boutons. Le clavier sert à saisir du texte et à naviguer comme sur n'importe quel site (Tab, Entrée, Échap pour fermer une fenêtre).
 
 ## Organisation des données dans `localStorage`
 

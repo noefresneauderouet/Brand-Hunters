@@ -82,23 +82,7 @@ const PLAYER_COLORS = Object.freeze([
 
 const ROUTES = Object.freeze(['new', 'hunt', 'results', 'history', 'rules', 'feedback']);
 const ROUTE_TITLES = Object.freeze({ new: 'New game', hunt: 'The hunt', results: 'Results', history: 'History', rules: 'Rules', feedback: 'Feedback' });
-const IS_MAC = /Mac|iPhone|iPad|iPod/.test(navigator.platform || navigator.userAgent);
 
-const SHORTCUTS = [
-  ['<kbd>Space</kbd> or <kbd>→</kbd>', 'Next hunter'],
-  ['<kbd>←</kbd>', 'Previous hunter'],
-  ['<kbd>1</kbd> <kbd>2</kbd> <kbd>3</kbd> <kbd>4</kbd>', 'Easy, Medium, Difficult, Most Wanted'],
-  ['<kbd>B</kbd>', 'Bonus'],
-  ['<kbd>X</kbd> or <kbd>−</kbd>', 'Wrong answer'],
-  ['<kbd>S</kbd> or <kbd>+</kbd>', 'Custom points'],
-  ['Number pad', 'Type points directly, then <kbd>Enter</kbd>'],
-  ['<kbd>↑</kbd> <kbd>↓</kbd>', 'Choose who gets the points'],
-  ['<kbd class="js-undo-key">Ctrl+Z</kbd> or <kbd>⌫</kbd>', 'Undo the last points'],
-  ['<kbd>P</kbd> · <kbd>R</kbd> · <kbd>M</kbd>', 'Pause · restart the timer · sound'],
-  ['<kbd>?</kbd>', 'Show the shortcuts'],
-  ['<kbd>Esc</kbd>', 'Close a window'],
-  ['<kbd><span class="js-mod">Ctrl</span>+Enter</kbd>', 'Start the hunt (New game page)'],
-];
 
 
 /* =============================================================================
@@ -804,8 +788,8 @@ function renderSetupBounty() {
   $('#setup-bounty').innerHTML = `
     <div class="tier-row">${tiles}</div>
     <div class="extra-row">
-      <button type="button" class="pill-btn pill-btn-bonus" data-action="edit-bounties">${icon('plus-circle')}<span>Bonus</span><b class="pill-value">${formatSigned(b.bonus)}</b></button>
-      <button type="button" class="pill-btn pill-btn-wrong" data-action="edit-bounties">${icon('x-circle')}<span>Wrong answer</span><b class="pill-value">${formatSigned(-b.penalty)}</b></button>
+      <button type="button" class="pill-btn pill-btn-bonus" data-action="edit-bounties"><span>Bonus</span><b class="pill-value">${formatSigned(b.bonus)}</b></button>
+      <button type="button" class="pill-btn pill-btn-wrong" data-action="edit-bounties"><span>Wrong answer</span><b class="pill-value">${formatSigned(-b.penalty)}</b></button>
     </div>`;
 }
 
@@ -1012,12 +996,12 @@ function renderPointsCard(g) {
   const target = g.players[g.target];
   $('#points-target').innerHTML = `Points for ${starIcon(target.color)} <strong>${escapeHtml(target.name)}</strong>${g.target !== g.current ? ' (off turn)' : ''}`;
   $('#bounty-grid').innerHTML = BOUNTY_TIERS.map((t, i) => `
-    <button type="button" class="tier tier-${t.key}" data-action="add-bounty" data-key="${t.key}" aria-label="${t.label}: add ${formatPoints(b[t.key])}" aria-keyshortcuts="${i + 1}">
-      <kbd class="kbd" aria-hidden="true">${i + 1}</kbd>${starsHtml(t.stars)}<span class="tier-label">${t.label}</span><span class="tier-value">${formatSigned(b[t.key])}</span>
+    <button type="button" class="tier tier-${t.key}" data-action="add-bounty" data-key="${t.key}" aria-label="${t.label}: add ${formatPoints(b[t.key])}">
+      ${starsHtml(t.stars)}<span class="tier-label">${t.label}</span><span class="tier-value">${formatSigned(b[t.key])}</span>
     </button>`).join('');
-  $('#bonus-btn').innerHTML = `${icon('plus-circle')}<span>Bonus</span><b class="pill-value">${formatSigned(b.bonus)}</b><kbd class="kbd" aria-hidden="true">B</kbd>`;
+  $('#bonus-btn').innerHTML = `<span>Bonus</span><b class="pill-value">${formatSigned(b.bonus)}</b>`;
   $('#bonus-btn').setAttribute('aria-label', `Bonus: add ${formatPoints(b.bonus)}`);
-  $('#wrong-btn').innerHTML = `${icon('x-circle')}<span>Wrong</span><b class="pill-value">${formatSigned(-b.penalty)}</b><kbd class="kbd" aria-hidden="true">X</kbd>`;
+  $('#wrong-btn').innerHTML = `<span>Wrong</span><b class="pill-value">${formatSigned(-b.penalty)}</b>`;
   $('#wrong-btn').setAttribute('aria-label', `Wrong answer: ${formatSigned(-b.penalty)}`);
   $('#undo-btn').disabled = g.entries.length === 0;
 }
@@ -1156,13 +1140,6 @@ function selectTarget(index) {
   renderHunt();
 }
 
-/** Chooses who gets the points with ↑ / ↓. */
-function moveTarget(delta) {
-  const g = state.game;
-  if (!g) return;
-  const count = g.players.length;
-  selectTarget((g.target + delta + count) % count);
-}
 
 function addBounty(key, pressedButton = null) {
   const value = key === 'penalty' ? -state.bounties.penalty : state.bounties[key];
@@ -1706,7 +1683,7 @@ function saveBountyDialog() {
   showToast('Bounty values saved');
 }
 
-/* --- Hunt settings and shortcuts ----------------------------------------- */
+/* --- Hunt settings ------------------------------------------------------- */
 
 function openSettings() {
   const g = state.game;
@@ -1719,13 +1696,6 @@ function openSettings() {
   openDialog($('#settings-dialog'));
 }
 
-function shortcutsHtml() {
-  return SHORTCUTS.map(([keys, action]) => `<div><dt>${keys}</dt><dd>${action}</dd></div>`).join('');
-}
-
-function openShortcuts() {
-  openDialog($('#shortcuts-dialog'));
-}
 
 
 /* =============================================================================
@@ -1980,8 +1950,6 @@ function renderRules() {
         <p class="card-hint">We’re filming it! It will appear right here.</p>
       </div>`;
   }
-  $('#rules-shortcuts').innerHTML = shortcutsHtml();
-  applyPlatformLabels($('#rules-shortcuts'));
 }
 
 
@@ -2110,58 +2078,6 @@ function showToast(message, duration = 1800) {
   toastTimeout = setTimeout(() => toast.classList.remove('is-visible'), duration);
 }
 
-function applyPlatformLabels(root = document) {
-  $$('.js-undo-key', root).forEach((el) => { el.textContent = IS_MAC ? '⌘Z' : 'Ctrl+Z'; });
-  $$('.js-mod', root).forEach((el) => { el.textContent = IS_MAC ? '⌘' : 'Ctrl'; });
-}
-
-function isTypingTarget(target) {
-  return Boolean(target && target.closest && target.closest('input, textarea, select, [contenteditable="true"]'));
-}
-
-/** Hunt shortcuts only work on the hunt page, with no window open and no field being typed in. */
-function isHuntShortcutContext(event) {
-  return state.route === 'hunt' && Boolean(state.game) && !$('dialog[open]') && !isTypingTarget(event.target);
-}
-
-/**
- * Hunt keyboard shortcuts. Returns true if the key was used.
- * Digits use event.code (physical key): they also work on AZERTY keyboards without Shift.
- */
-function handleHuntShortcut(event) {
-  if (!isHuntShortcutContext(event) || event.altKey) return false;
-  const { key, code } = event;
-  const letter = key.length === 1 ? key.toLowerCase() : '';
-  const once = (fn) => {
-    if (!event.repeat) fn(); // holding a key doesn't skip several hunters
-    return true;
-  };
-
-  if (event.ctrlKey || event.metaKey) {
-    return letter === 'z' && !event.shiftKey ? once(undoLastEntry) : false;
-  }
-  // On a tab chosen with the keyboard, ← and → switch tabs.
-  const onTab = event.target.getAttribute && event.target.getAttribute('role') === 'tab';
-  if (onTab && (key === 'ArrowLeft' || key === 'ArrowRight')) return false;
-
-  if (key === ' ' || key === 'ArrowRight') return once(() => changeTurn(1));
-  if (key === 'ArrowLeft') return once(() => changeTurn(-1));
-  if (key === 'ArrowUp') { moveTarget(-1); return true; }
-  if (key === 'ArrowDown') { moveTarget(1); return true; }
-  if (key === 'Backspace' || key === 'Delete') return once(undoLastEntry);
-
-  const digit = /^Digit([1-4])$/.exec(code);
-  if (digit) return once(() => addBounty(BOUNTY_TIERS[Number(digit[1]) - 1].key));
-  if (/^Numpad\d$/.test(code) && /^\d$/.test(key)) return once(() => openCustomDialog({ text: key }));
-  if (letter === 'b' || code === 'Digit5') return once(() => addBounty('bonus'));
-  if (letter === 'x' || key === '-' || key === '−' || code === 'Digit6') return once(() => addBounty('penalty'));
-  if (letter === 's' || key === '+') return once(() => openCustomDialog());
-  if (letter === 'p') return once(togglePause);
-  if (letter === 'r') return once(restartTurnTimer);
-  if (letter === 'm') return once(toggleSound);
-  if (key === '?' || letter === 'h') return once(openShortcuts);
-  return false;
-}
 
 /** Every action triggered by a [data-action] element. */
 const ACTIONS = {
@@ -2184,7 +2100,6 @@ const ACTIONS = {
   'toggle-sound': toggleSound,
   'tab': (el) => setTab(el.dataset.tab),
   'open-settings': openSettings,
-  'open-shortcuts': openShortcuts,
   'end-game': endGame,
   'abandon-game': abandonGame,
   // Custom points
@@ -2212,8 +2127,6 @@ function onClick(event) {
   if (!action) return;
   if (element.hasAttribute('data-close-settings')) $('#settings-dialog').close('cancel');
   action(element, event);
-  // After a mouse click on a tab, ← and → go back to “previous / next hunter”.
-  if (event.detail > 0 && element.getAttribute('role') === 'tab') element.blur();
 }
 
 function onInput(event) {
@@ -2253,26 +2166,11 @@ function onChange(event) {
 function onKeydown(event) {
   const target = event.target;
 
-  // Ctrl+Enter (⌘+Enter on Mac) on the New game page: starts the hunt.
-  if (event.key === 'Enter' && (event.ctrlKey || event.metaKey) && state.route === 'new' && !$('dialog[open]')) {
+  // Feedback: Enter in the team name goes to the message (instead of sending).
+  if (event.key === 'Enter' && target.id === 'feedback-team') {
     event.preventDefault();
-    if (target.matches && target.matches('.time-field')) commitTimerField(target);
-    startGame();
+    $('#feedback-message').focus();
     return;
-  }
-
-  // Feedback: Ctrl+Enter sends; Enter in the team name goes to the message.
-  if (event.key === 'Enter' && state.route === 'feedback' && !$('dialog[open]')) {
-    if (event.ctrlKey || event.metaKey) {
-      event.preventDefault();
-      submitFeedback();
-      return;
-    }
-    if (target.id === 'feedback-team') {
-      event.preventDefault();
-      $('#feedback-message').focus();
-      return;
-    }
   }
 
   // Enter in the round timer: applies the time without starting the hunt.
@@ -2305,10 +2203,7 @@ function onKeydown(event) {
     const next = tabs[(index + (event.key === 'ArrowRight' ? 1 : -1) + tabs.length) % tabs.length];
     setTab(next.dataset.tab);
     next.focus();
-    return;
   }
-
-  if (handleHuntShortcut(event)) event.preventDefault();
 }
 
 function bindEvents() {
@@ -2316,10 +2211,6 @@ function bindEvents() {
   document.addEventListener('input', onInput);
   document.addEventListener('change', onChange);
   document.addEventListener('keydown', onKeydown);
-  // Space = “Next hunter”: the focused button must not be pressed as well.
-  document.addEventListener('keyup', (event) => {
-    if (event.key === ' ' && isHuntShortcutContext(event)) event.preventDefault();
-  });
   document.addEventListener('pointerdown', primeAudio, { passive: true });
 
   // Keeps the keyboard open when tapping “±” or a hunter in the custom points window.
@@ -2370,8 +2261,6 @@ function init() {
   dom.timerProgress = $('#timer-progress');
   dom.timerKnob = $('#timer-knob');
 
-  $('#dialog-shortcuts').innerHTML = shortcutsHtml();
-  applyPlatformLabels();
   bindEvents();
 
   // A hunt in progress is resumed automatically after closing or reloading the page.
