@@ -886,44 +886,69 @@ async function startGame() {
 /** Number of the current turn (one turn = one hunter's go), counted from the start. */
 const turnIndex = (game) => (game.round - 1) * game.players.length + game.current;
 
+/** Wrong-answer entry (older versions had no category: their negative entries were wrong answers). */
+const isWrongAnswer = (e) => e.c === 'penalty' || (e.c === undefined && e.v < 0);
+
 /*
- * Wrong answers only count if the hunter finds (Brand Hunters rule): a negative
- * entry counts only if the same hunter also scores positive points during the
- * same turn. Each entry therefore has a status:
- *   counted   → included in the total;
+ * Wrong answers (Brand Hunters rule), for each hunter and each turn:
+ *   • they only count if the hunter finds, i.e. scores points that turn;
+ *   • they never take away more than the points won that turn
+ *     (+200 and 8 wrong answers = −200 of penalties, so the turn is worth 0).
+ * Each entry therefore has a status:
+ *   counted   → fully included in the total;
+ *   partial   → only part of it counts (the turn's limit was reached);
+ *   capped    → not counted: the turn's limit was already reached;
  *   pending   → current turn, the bounty is not (yet) found;
  *   cancelled → turn over without finding: the penalty is dropped.
- * The status is computed from the entries (nothing is deleted), so “Previous
- * hunter” and “Undo” always leave the scores right.
+ * Custom points always count as typed. Everything is computed from the entries
+ * (nothing is deleted), so “Previous hunter” and “Undo” always leave the scores right.
  */
 function computeScores(game, { finished = false } = {}) {
   const totals = {};
   const pending = {};
   game.players.forEach((p) => { totals[p.id] = 0; pending[p.id] = 0; });
-  const scoredTurns = new Set(game.entries.filter((e) => e.v > 0 && e.k !== undefined).map((e) => `${e.k}|${e.p}`));
-  const current = turnIndex(game);
+  const statuses = game.entries.map(() => 'counted');
+  const amounts = game.entries.map((e) => e.v); // what each entry really adds
 
-  const statuses = game.entries.map((e) => {
-    let status = 'counted';
-    if (game.conditionalPenalties && e.v < 0 && e.k !== undefined && !scoredTurns.has(`${e.k}|${e.p}`)) {
-      status = e.k === current && !finished ? 'pending' : 'cancelled';
-    }
-    if (e.p in totals) {
-      if (status === 'counted') totals[e.p] = roundScore(totals[e.p] + e.v);
-      if (status === 'pending') pending[e.p] = roundScore(pending[e.p] + e.v);
-    }
-    return status;
+  if (game.conditionalPenalties) {
+    const turns = new Map(); // `${turn}|${hunter}` → { k, gain, wrong: [entry indexes] }
+    game.entries.forEach((e, i) => {
+      if (e.k === undefined) return; // entries from the very first version: always counted
+      const key = `${e.k}|${e.p}`;
+      if (!turns.has(key)) turns.set(key, { k: e.k, gain: 0, wrong: [] });
+      const turn = turns.get(key);
+      if (e.v > 0) turn.gain = roundScore(turn.gain + e.v);
+      else if (isWrongAnswer(e)) turn.wrong.push(i);
+    });
+
+    const current = turnIndex(game);
+    turns.forEach((turn) => {
+      if (!turn.wrong.length) return;
+      if (turn.gain <= 0) {
+        const status = turn.k === current && !finished ? 'pending' : 'cancelled';
+        turn.wrong.forEach((i) => { statuses[i] = status; amounts[i] = 0; });
+        return;
+      }
+      let room = turn.gain; // a hunter never loses more than they won this turn
+      turn.wrong.forEach((i) => {
+        const loss = Math.min(-game.entries[i].v, room);
+        room = roundScore(room - loss);
+        amounts[i] = loss > 0 ? -loss : 0;
+        statuses[i] = loss === -game.entries[i].v ? 'counted' : (loss > 0 ? 'partial' : 'capped');
+      });
+    });
+  }
+
+  game.entries.forEach((e, i) => {
+    if (!(e.p in totals)) return;
+    if (statuses[i] === 'pending') pending[e.p] = roundScore(pending[e.p] + e.v);
+    else totals[e.p] = roundScore(totals[e.p] + amounts[i]);
   });
-  return { totals, pending, statuses };
+  return { totals, pending, statuses, amounts };
 }
 
 function getTotals(game, options) {
   return computeScores(game, options).totals;
-}
-
-function hasScoredThisTurn(game, playerId) {
-  const k = turnIndex(game);
-  return game.entries.some((e) => e.p === playerId && e.k === k && e.v > 0);
 }
 
 /** Hunters with pending penalties: [{ name, amount }]. */
@@ -973,7 +998,7 @@ function renderCurrentHunter(g, scores) {
 
   const notes = [];
   if (scores.pending[current.id] < 0) {
-    notes.push(`${formatSigned(scores.pending[current.id])} pending · counts if the bounty is found`);
+    notes.push(`${formatSigned(scores.pending[current.id])} pending · counts if the bounty is found, up to the points won`);
   }
   let html = notes.map(escapeHtml).join('');
   if (g.target !== g.current) {
@@ -1066,15 +1091,26 @@ function renderRanking(g, ranking) {
 
 /** Score sheet: one row per round, one column per hunter. */
 function renderRounds(g, scores) {
-  const { totals, statuses } = scores;
+  const { totals, statuses, amounts } = scores;
   const rounds = g.entries.reduce((max, e) => Math.max(max, e.r), g.round);
   const cells = new Map();
   g.entries.forEach((e, i) => {
     const key = `${e.r}|${e.p}`;
     if (!cells.has(key)) cells.set(key, []);
-    cells.get(key).push({ v: e.v, status: statuses[i] });
+    cells.get(key).push({ v: e.v, amount: amounts[i], status: statuses[i] });
   });
-  const titles = { pending: 'Pending: counts if the bounty is found', cancelled: 'Cancelled: bounty not found' };
+  const titles = {
+    pending: 'Pending: counts if the bounty is found',
+    cancelled: 'Not counted: bounty not found',
+    capped: 'Not counted: you can’t lose more than the points won',
+  };
+  const itemHtml = (item) => {
+    if (item.status === 'counted') return formatSigned(item.v);
+    if (item.status === 'partial') {
+      return `<span class="is-partial" title="Only ${formatSigned(item.amount)} counted: you can’t lose more than the points won">${formatSigned(item.amount)}</span>`;
+    }
+    return `<span class="is-${item.status}" title="${titles[item.status]}">${formatSigned(item.v)}</span>`;
+  };
 
   const head = g.players.map((p) => `
     <th scope="col"><span class="rounds-player">${starIcon(p.color)}<span>${escapeHtml(p.name)}</span></span></th>`).join('');
@@ -1089,21 +1125,19 @@ function renderRounds(g, scores) {
         body += '<td class="is-empty">·</td>';
         return;
       }
-      const counted = items.filter((item) => item.status === 'counted');
-      const sum = roundScore(counted.reduce((total, item) => total + item.v, 0));
-      const showDetail = items.length > 1 || counted.length !== items.length;
-      const detail = showDetail ? `<span class="cell-detail">${items.map((item) => (item.status === 'counted'
-        ? formatSigned(item.v)
-        : `<span class="is-${item.status}" title="${titles[item.status]}">${formatSigned(item.v)}</span>`)).join(' ')}</span>` : '';
-      const cls = !counted.length ? 'is-void' : (sum < 0 ? 'is-neg' : 'is-pos');
-      body += `<td class="${cls}"><span class="cell-sum">${counted.length ? formatSigned(sum) : '0'}</span>${detail}</td>`;
+      const counts = items.some((item) => item.status === 'counted' || item.status === 'partial');
+      const sum = roundScore(items.reduce((total, item) => total + item.amount, 0));
+      const showDetail = items.length > 1 || items.some((item) => item.status !== 'counted');
+      const detail = showDetail ? `<span class="cell-detail">${items.map(itemHtml).join(' ')}</span>` : '';
+      const cls = !counts ? 'is-void' : (sum < 0 ? 'is-neg' : 'is-pos');
+      body += `<td class="${cls}"><span class="cell-sum">${counts ? formatSigned(sum) : '0'}</span>${detail}</td>`;
     });
     body += '</tr>';
   }
 
   $('#rounds-note').textContent = !g.entries.length
     ? 'No points yet.'
-    : `Points scored in each round.${g.conditionalPenalties ? ' Struck-through values: penalties cancelled (bounty not found).' : ''}`;
+    : `Points scored in each round.${g.conditionalPenalties ? ' Struck-through values: wrong answers not counted (bounty not found, or more than the points won).' : ''}`;
   $('#rounds-wrap').innerHTML = `
     <table class="rounds">
       <thead>
@@ -1148,26 +1182,43 @@ function addPoints(value, category = 'custom') {
   if (!g || !Number.isFinite(value) || value === 0) return;
   const player = g.players[g.target];
   const points = roundScore(value);
-  const pendingBefore = computeScores(g).pending[player.id];
-  const willWait = g.conditionalPenalties && points < 0 && !hasScoredThisTurn(g, player.id);
-  // k = turn of the entry (used by “wrong answers only count if the hunter finds”)
+  const before = computeScores(g);
+  // k = turn of the entry (used by the wrong-answer rule)
   g.entries.push({ p: player.id, v: points, r: g.round, k: turnIndex(g), c: category, t: Date.now() });
+  const after = computeScores(g);
   saveGame();
   renderHunt();
-  animateScore(player.id, points, willWait);
 
+  const last = g.entries.length - 1;
+  const status = after.statuses[last];
+  const change = roundScore(after.totals[player.id] - before.totals[player.id]); // real effect on the total
+  animateScore(player.id, points, { muted: status === 'pending' || change === 0, bump: change !== 0 });
+
+  const head = `${formatSigned(points)} for ${player.name}`;
   const label = BOUNTY_TIERS.some((t) => t.key === category) ? ` · ${BOUNTY_LABELS[category]}` : '';
-  if (willWait) showToast(`${formatSigned(points)} for ${player.name} · pending`);
-  else if (points > 0 && pendingBefore < 0) showToast(`${formatSigned(points)} for ${player.name} · penalties applied (${formatSigned(pendingBefore)})`, 2600);
-  else showToast(`${formatSigned(points)} for ${player.name}${label}`);
+  if (status === 'pending') {
+    showToast(`${head} · pending`);
+  } else if (status === 'capped') {
+    showToast(`${head} · not counted (can’t lose more than the points won)`, 2800);
+  } else if (status === 'partial') {
+    showToast(`${head} · only ${formatSigned(after.amounts[last])} counted (max = points won)`, 2800);
+  } else if (points > 0 && change < points) {
+    // Scoring brings the turn's wrong answers into play (up to the points won)
+    const penalties = roundScore(change - points);
+    const capped = after.statuses.some((s, i) => (s === 'capped' || s === 'partial')
+      && g.entries[i].p === player.id && g.entries[i].k === g.entries[last].k);
+    showToast(`${head}${label} · penalties ${formatSigned(penalties)}${capped ? ' (max = points won)' : ''}`, 2800);
+  } else {
+    showToast(`${head}${label}`);
+  }
 }
 
-function animateScore(playerId, value, pending = false) {
+function animateScore(playerId, value, { muted = false, bump = true } = {}) {
   const row = $(`#hunter-list .hunter-row[data-player-id="${CSS.escape(playerId)}"]`);
   if (!row) return;
-  if (!pending) $('.score-pill', row).classList.add('is-bumped');
+  if (bump) $('.score-pill', row).classList.add('is-bumped');
   const delta = document.createElement('span');
-  delta.className = `float-delta ${pending ? 'is-pending' : (value < 0 ? 'is-neg' : 'is-pos')}`;
+  delta.className = `float-delta ${muted ? 'is-pending' : (value < 0 ? 'is-neg' : 'is-pos')}`;
   delta.textContent = formatSigned(value);
   row.append(delta);
   setTimeout(() => delta.remove(), 1000);
@@ -1188,17 +1239,18 @@ function changeTurn(direction) {
   const g = state.game;
   if (!g) return;
   const count = g.players.length;
+  if (direction < 0 && g.round <= 1 && g.current === 0) return;
+  // Read before moving: penalties still pending now are dropped (bounty not found)
+  const wasPaused = isPaused(g);
+  const cancelled = pendingPenalties(g);
   let next = g.current + direction;
   if (next >= count) {
     next = 0;
     g.round += 1;
   } else if (next < 0) {
-    if (g.round <= 1) return;
     next = count - 1;
     g.round -= 1;
   }
-  const wasPaused = isPaused(g);
-  const cancelled = pendingPenalties(g); // bounty not found: these penalties are dropped
   g.current = next;
   g.target = next;
   if (wasPaused) resumeClock(g); // moving on resumes the hunt
@@ -1558,16 +1610,16 @@ function updateCustomPreview() {
   const player = g.players[state.customTarget];
   const { totals, pending } = computeScores(g);
   const total = totals[player.id];
-  const waiting = pending[player.id];
   let preview = `${player.name}: ${formatNumber(total)}`;
-  if (value !== null && g.conditionalPenalties && value < 0 && !hasScoredThisTurn(g, player.id)) {
-    preview += ` · ${formatSigned(roundScore(waiting + value))} pending (counts if the bounty is found)`;
-  } else if (value !== null) {
-    const applied = value > 0 ? waiting : 0; // scoring applies the pending penalties
-    preview += ` → ${formatNumber(roundScore(total + value + applied))}`;
-    if (applied < 0) preview += ` (incl. ${formatSigned(applied)} penalties)`;
-  } else if (waiting < 0) {
-    preview += ` · ${formatSigned(waiting)} pending`;
+  if (value !== null) {
+    // Exact result: the same calculation on the entries plus this one
+    const simulated = { ...g, entries: [...g.entries, { p: player.id, v: value, r: g.round, k: turnIndex(g), c: 'custom' }] };
+    const next = computeScores(simulated).totals[player.id];
+    preview += ` → ${formatNumber(next)}`;
+    const penalties = roundScore(next - total - value);
+    if (penalties < 0) preview += ` (incl. ${formatSigned(penalties)} penalties)`;
+  } else if (pending[player.id] < 0) {
+    preview += ` · ${formatSigned(pending[player.id])} pending`;
   }
   $('#custom-preview').textContent = preview;
 }

@@ -52,13 +52,15 @@ Chaque page a sa propre adresse, ce qui fait aussi fonctionner le bouton « reto
 - **Sauvegarde :** automatique à chaque action ; on retrouve la partie après une fermeture ou un rechargement.
 - **History :** parties terminées. Chacune peut être supprimée ou rejouée (« Play again » pré-remplit New game avec les mêmes chasseurs et réglages).
 
-### Mauvaises réponses : elles ne comptent que si le chasseur trouve
+### Mauvaises réponses : seulement si le chasseur trouve, et jamais plus que ce qu'il gagne
 
-Dans Brand Hunters, chaque mauvaise réponse coûte −50, mais seulement si le chasseur finit par trouver la marque. Cette règle est activée par défaut et peut être désactivée dans New game (House rules) ou dans Settings.
+Dans Brand Hunters, chaque mauvaise réponse coûte −50, mais seulement si le chasseur finit par trouver la marque. Et il ne peut jamais perdre plus de points qu'il n'en gagne pendant ce tour. Cette règle est activée par défaut et peut être désactivée dans New game (House rules) ou dans Settings.
 
 - **Pendant le tour :** les points négatifs restent **en attente** (« −100 pending »), sans toucher au total.
 - **Il trouve :** dès qu'il marque des points positifs dans le même tour (une prime, le bonus ou des points Custom), les pénalités sont appliquées.
+- **Plafond :** les pénalités d'un tour ne dépassent jamais les points gagnés pendant ce tour. Par exemple, +200 avec 8 mauvaises réponses (−400) donne −200 de pénalités : le tour vaut 0, jamais moins. Les pénalités en trop apparaissent barrées dans « Rounds ». Une pénalité comptée seulement en partie est soulignée en pointillés, avec le montant retenu. Un bonus gagné pendant le tour relève ce plafond.
 - **Il ne trouve pas :** au « Next hunter », elles sont **annulées**. Un message le signale, et elles apparaissent barrées dans « Rounds ».
+- **Points Custom négatifs :** ils comptent toujours tels quels. C'est l'outil de l'arbitre, par exemple pour une correction.
 - **Retour en arrière :** ‹ (chasseur précédent) remet les pénalités en attente ; « Undo » fonctionne normalement.
 - **Fin de partie :** « End game » annule les pénalités encore en attente, et la confirmation l'indique.
 
@@ -216,7 +218,7 @@ Les clés gardent les noms des versions précédentes : les parties en cours et 
   - `c` : le type de saisie (`easy`, `medium`, `difficult`, `wanted`, `bonus`, `penalty` ou `custom`) ;
   - `t` : l'horodatage.
 - **Ce journal suffit à tout :**
-  - total = somme des saisies qui comptent. Avec `conditionalPenalties`, un point négatif ne compte que si le même chasseur a aussi des points positifs avec le même `k` ; sinon il est « en attente » (tour en cours) ou « annulé » (tour terminé). Cet état est recalculé à chaque fois, rien n'est effacé ;
+  - total = somme des saisies qui comptent. Avec `conditionalPenalties`, les mauvaises réponses (`c: "penalty"`) d'un chasseur ne comptent que s'il a aussi des points positifs avec le même `k`, et au plus à hauteur de ces points. Chaque mauvaise réponse est donc « comptée », « comptée en partie », « plafonnée » (au-delà des points gagnés), « en attente » (tour en cours) ou « annulée » (tour terminé sans trouver). Cet état est recalculé à chaque fois, rien n'est effacé ;
   - Undo = retirer la dernière saisie ;
   - onglet Rounds = saisies regroupées par tour.
 - **Les temps sont des horodatages**, pas des compteurs : `accMs` est le temps déjà cumulé et `since` le début de la période en cours (`null` = en pause). Le chronomètre reste donc juste après un rechargement ou une mise en veille du téléphone.

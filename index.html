@@ -179,7 +179,7 @@
             <label class="switch-row">
               <span class="switch-text">
                 Wrong answers only count if the hunter finds
-                <small>Penalties wait during the turn. They count when the hunter scores, and are cancelled at “Next hunter” otherwise.</small>
+                <small>Penalties wait during the turn and are cancelled at “Next hunter” if the bounty isn’t found. A hunter never loses more than they win in a turn: +200 with 8 wrong answers = 0.</small>
               </span>
               <input type="checkbox" class="switch" id="conditional-penalties">
             </label>
@@ -456,7 +456,7 @@
       </div>
       <div class="settings-group">
         <label class="switch-row">
-          <span class="switch-text">Wrong answers only count if the hunter finds</span>
+          <span class="switch-text">Wrong answers only count if the hunter finds<small>Never more than the points won in the turn.</small></span>
           <input type="checkbox" class="switch" id="settings-conditional">
         </label>
         <label class="switch-row">

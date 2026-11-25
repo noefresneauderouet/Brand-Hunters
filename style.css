@@ -1704,9 +1704,15 @@ button.tier:active {
   font-style: italic;
 }
 
-.cell-detail .is-cancelled {
+.cell-detail .is-cancelled,
+.cell-detail .is-capped {
   opacity: 0.6;
   text-decoration: line-through;
+}
+
+.cell-detail .is-partial {
+  text-decoration: underline dotted;
+  text-underline-offset: 2px;
 }
 
 .hunt-actions {
