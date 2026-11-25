@@ -3,8 +3,16 @@
 /* =============================================================================
    Brand Hunters · feedback endpoint (Vercel serverless function)
    -----------------------------------------------------------------------------
-   POST /api/feedback   { "team": "…", "message": "…" }
+   POST /api/feedback   { "team": "…", "message": "…", "sessionId": "…" }
    Sends the message by email with Resend (https://resend.com).
+
+   Limits (the page applies them too, but anyone can bypass a web page):
+     · per browser session (random "sessionId" made by the page, kept until the
+       browser is closed): 2 messages, at least 1 minute apart;
+     · per IP address: 20 messages per 10 minutes. Kept loose on purpose: a
+       whole class on the same Wi-Fi often shares one address.
+   They are kept in the memory of each server instance: a good brake against
+   abuse, not an exact count (an instance can restart, several can run).
 
    The Resend API key must stay secret: it lives here, on the server, never in
    the website code. Set these environment variables in Vercel
@@ -29,11 +37,17 @@ const MAX_MESSAGE = 2000;
 const MAX_BODY_BYTES = 16 * 1024;
 /** A human needs more than this to write a message: faster = bot. */
 const MIN_FILL_MS = 2500;
-/** Best-effort limit per IP address (kept in memory by each server instance). */
-const RATE_LIMIT = { max: 5, windowMs: 10 * 60 * 1000 };
+/** Per browser session. keepMs: after that, a forgotten session starts again. */
+const SESSION_LIMIT = { max: 2, minIntervalMs: 60 * 1000, keepMs: 12 * 60 * 60 * 1000 };
+/** Safety net per IP address (bots changing their session id at each request). */
+const IP_LIMIT = { max: 20, windowMs: 10 * 60 * 1000 };
+/** Keeps memory bounded. */
+const MAX_TRACKED = 5000;
+const SESSION_ID = /^[\w-]{6,64}$/;
 const DEFAULT_FROM = 'Brand Hunters <onboarding@resend.dev>';
 
-const recentByIp = new Map();
+const sentBySession = new Map(); // session id → times of the messages sent
+const recentByIp = new Map();    // IP address → times of the recent attempts
 
 function sendJson(res, status, data) {
   res.statusCode = status;
@@ -97,15 +111,52 @@ async function readJson(req) {
   }
 }
 
-function isRateLimited(ip, now = Date.now()) {
-  const recent = (recentByIp.get(ip) || []).filter((time) => now - time < RATE_LIMIT.windowMs);
-  if (recent.length >= RATE_LIMIT.max) {
+/** Forgets old entries when a map gets too big. */
+function prune(map, maxAgeMs, now) {
+  if (map.size <= MAX_TRACKED) return;
+  for (const [key, times] of map) {
+    if (!times.length || now - times[times.length - 1] >= maxAgeMs) map.delete(key);
+  }
+  if (map.size > MAX_TRACKED) map.clear();
+}
+
+/** null if this session may send now, otherwise the reason (and the wait in seconds). */
+function checkSession(id, now = Date.now()) {
+  const times = (sentBySession.get(id) || []).filter((time) => now - time < SESSION_LIMIT.keepMs);
+  if (times.length >= SESSION_LIMIT.max) return { error: 'session_limit' };
+  const last = times[times.length - 1];
+  if (last !== undefined && now - last < SESSION_LIMIT.minIntervalMs) {
+    return { error: 'too_soon', retryAfter: Math.ceil((SESSION_LIMIT.minIntervalMs - (now - last)) / 1000) };
+  }
+  return null;
+}
+
+function recordSession(id, now) {
+  const times = (sentBySession.get(id) || []).filter((time) => now - time < SESSION_LIMIT.keepMs);
+  times.push(now);
+  sentBySession.set(id, times);
+  prune(sentBySession, SESSION_LIMIT.keepMs, now);
+}
+
+/** The email could not be sent: the attempt must not use up the session's quota. */
+function forgetSession(id, now) {
+  const times = sentBySession.get(id);
+  if (!times) return;
+  const index = times.lastIndexOf(now);
+  if (index >= 0) times.splice(index, 1);
+  if (!times.length) sentBySession.delete(id);
+}
+
+/** Counts this attempt for the IP address; true if it is over the limit. */
+function isIpLimited(ip, now = Date.now()) {
+  const recent = (recentByIp.get(ip) || []).filter((time) => now - time < IP_LIMIT.windowMs);
+  if (recent.length >= IP_LIMIT.max) {
     recentByIp.set(ip, recent);
     return true;
   }
   recent.push(now);
   recentByIp.set(ip, recent);
-  if (recentByIp.size > 5000) recentByIp.clear(); // keep memory bounded
+  prune(recentByIp, IP_LIMIT.windowMs, now);
   return false;
 }
 
@@ -172,9 +223,20 @@ module.exports = async function handler(req, res) {
   if (message.length > MAX_MESSAGE) return sendJson(res, 400, { ok: false, error: 'message_too_long' });
   if (team.length > MAX_TEAM) return sendJson(res, 400, { ok: false, error: 'team_too_long' });
 
+  // Same limits as the page, for this browser session.
+  const now = Date.now();
+  const sessionId = SESSION_ID.test(String(body.sessionId || '')) ? String(body.sessionId) : null;
+  if (sessionId) {
+    const blocked = checkSession(sessionId, now);
+    if (blocked) {
+      if (blocked.retryAfter) res.setHeader('Retry-After', String(blocked.retryAfter));
+      return sendJson(res, 429, { ok: false, ...blocked });
+    }
+  }
+
   const ip = String(req.headers['x-forwarded-for'] || '').split(',')[0].trim()
     || (req.socket && req.socket.remoteAddress) || 'unknown';
-  if (isRateLimited(ip)) return sendJson(res, 429, { ok: false, error: 'too_many_requests' });
+  if (isIpLimited(ip, now)) return sendJson(res, 429, { ok: false, error: 'too_many_requests' });
 
   const apiKey = process.env.RESEND_API_KEY;
   const to = process.env.FEEDBACK_TO;
@@ -184,6 +246,8 @@ module.exports = async function handler(req, res) {
   }
 
   const email = buildEmail({ team, message, from: process.env.FEEDBACK_FROM || DEFAULT_FROM, to });
+  // Counted before sending, so two requests at the same moment can't both pass.
+  if (sessionId) recordSession(sessionId, now);
   try {
     const response = await fetch('https://api.resend.com/emails', {
       method: 'POST',
@@ -193,10 +257,12 @@ module.exports = async function handler(req, res) {
     if (!response.ok) {
       const detail = await response.text().catch(() => '');
       console.error(`Feedback: Resend answered ${response.status}: ${detail.slice(0, 500)}`);
+      if (sessionId) forgetSession(sessionId, now);
       return sendJson(res, 502, { ok: false, error: 'send_failed' });
     }
   } catch (error) {
     console.error('Feedback: could not reach Resend.', error);
+    if (sessionId) forgetSession(sessionId, now);
     return sendJson(res, 502, { ok: false, error: 'send_failed' });
   }
   return sendJson(res, 200, { ok: true });

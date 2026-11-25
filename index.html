@@ -389,7 +389,8 @@
           <label>Website <input type="text" id="feedback-website" name="website" tabindex="-1" autocomplete="off"></label>
         </div>
         <p class="card-hint feedback-note">Your message is emailed to the Brand Hunters team. Please don’t include personal information.</p>
-        <button type="submit" class="cta" id="feedback-submit">
+        <p class="card-hint feedback-note feedback-limit" id="feedback-limit">Up to 2 messages per visit, at least 1 minute apart.</p>
+        <button type="submit" class="cta" id="feedback-submit" aria-describedby="feedback-limit">
           <span id="feedback-submit-label">Send</span><svg class="icon" aria-hidden="true"><use href="#i-send"></use></svg>
         </button>
       </form>
@@ -397,8 +398,9 @@
       <div class="card feedback-done" id="feedback-done" hidden>
         <span class="feedback-done-icon"><svg class="icon" aria-hidden="true"><use href="#i-star"></use></svg></span>
         <h2 class="feedback-done-title" id="feedback-done-title" tabindex="-1">Thank you!</h2>
-        <p>Your message is on its way to the Brand Hunters team.</p>
-        <button type="button" class="pill-btn pill-btn-sand" data-action="feedback-again"><svg class="icon" aria-hidden="true"><use href="#i-message"></use></svg><span>Send another message</span></button>
+        <p id="feedback-done-text">Your message is on its way to the Brand Hunters team.</p>
+        <p class="card-hint" id="feedback-done-limit" hidden></p>
+        <button type="button" class="pill-btn pill-btn-sand" id="feedback-again" data-action="feedback-again"><svg class="icon" aria-hidden="true"><use href="#i-message"></use></svg><span>Send another message</span></button>
       </div>
     </section>
   </main>

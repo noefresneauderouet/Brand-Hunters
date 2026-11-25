@@ -2041,6 +2041,13 @@ button.tier:active {
   text-align: center;
 }
 
+/* “Up to 2 messages per visit…”, right under the note */
+.feedback-limit {
+  margin-top: -10px;
+  color: var(--sand);
+  font-weight: 600;
+}
+
 .feedback-card .cta {
   align-self: center;
 }
@@ -2049,6 +2056,12 @@ button.tier:active {
   cursor: progress;
   opacity: 0.65;
   transform: none;
+}
+
+/* Waiting for the minute to pass, or no messages left */
+.cta.is-waiting:disabled {
+  cursor: not-allowed;
+  font-variant-numeric: tabular-nums;
 }
 
 .feedback-done {

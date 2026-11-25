@@ -46,6 +46,11 @@ const RULES_VIDEO_URL = '';
 const FEEDBACK_ENDPOINT = 'api/feedback';
 const FEEDBACK_MAX = 2000;
 const FEEDBACK_TIMEOUT_MS = 15000;
+/** Sending limits (also enforced by api/feedback.js). */
+const FEEDBACK_LIMITS = Object.freeze({ perSession: 2, minIntervalMs: 60 * 1000 });
+/** Where this browser session's sends are remembered (see readFeedbackSession). */
+const FEEDBACK_SESSION_KEY = 'compteurPoints.v1.feedbackSession';
+const FEEDBACK_COOKIE = 'bhFeedbackSession';
 
 const MIN_PLAYERS = 2;
 const MAX_PLAYERS = 10;
@@ -1958,16 +1963,23 @@ function renderRules() {
    -----------------------------------------------------------------------------
    The form is posted to FEEDBACK_ENDPOINT (api/feedback.js on Vercel), which
    emails it with Resend. The Resend key never reaches the browser.
+
+   Limits: FEEDBACK_LIMITS.perSession messages per browser session, at least
+   FEEDBACK_LIMITS.minIntervalMs apart. The page enforces them for honest
+   players; the server checks them again with the session id sent along.
    ========================================================================== */
 
 let feedbackShownAt = 0;   // used to spot bots that fill the form instantly
 let feedbackSending = false;
+let feedbackTicker = 0;     // countdown refresh while a send has to wait
 
 const FEEDBACK_ERRORS = {
   message_required: 'Write a message first.',
   message_too_long: `Your message is too long (${FEEDBACK_MAX} characters max).`,
   team_too_long: 'The team name is too long (60 characters max).',
   too_many_requests: 'Too many messages in a short time. Please try again in a few minutes.',
+  too_soon: 'Please wait a minute between two messages.',
+  session_limit: `You’ve reached the maximum of ${FEEDBACK_LIMITS.perSession} messages for this visit.`,
   not_configured: 'Feedback isn’t set up on this site yet. Please try again later.',
   offline: 'Sending only works once the site is online.',
   network: 'Couldn’t send your message. Check your connection and try again.',
@@ -1976,6 +1988,132 @@ const FEEDBACK_ERRORS = {
 function renderFeedback() {
   if (!feedbackShownAt) feedbackShownAt = Date.now();
   updateFeedbackCount();
+  if (feedbackQuota().remaining === 0 && !feedbackSending) showFeedbackDone(false);
+  updateFeedbackLimit();
+}
+
+/* --- Sending limits ------------------------------------------------------- */
+
+function parseFeedbackSession(raw) {
+  try {
+    const data = JSON.parse(raw);
+    if (!data || typeof data.id !== 'string' || !/^[\w-]{6,64}$/.test(data.id)) return null;
+    return {
+      id: data.id,
+      sent: Array.isArray(data.sent) ? data.sent.filter(Number.isFinite) : [],
+      full: data.full === true,
+      until: Number.isFinite(data.until) ? data.until : 0,
+    };
+  } catch {
+    return null;
+  }
+}
+
+/**
+ * This browser session's sends: { id, sent: [times], full, until }.
+ * Kept in a session cookie (shared by every tab, deleted when the browser is
+ * closed) and in sessionStorage (in case cookies are blocked). Both are merged.
+ */
+function readFeedbackSession() {
+  let fromCookie = null;
+  let fromStorage = null;
+  try {
+    const match = document.cookie.match(new RegExp(`(?:^|;\\s*)${FEEDBACK_COOKIE}=([^;]*)`));
+    if (match) fromCookie = parseFeedbackSession(decodeURIComponent(match[1]));
+  } catch { /* cookies unavailable */ }
+  try {
+    fromStorage = parseFeedbackSession(sessionStorage.getItem(FEEDBACK_SESSION_KEY));
+  } catch { /* sessionStorage unavailable */ }
+
+  const found = [fromCookie, fromStorage].filter(Boolean);
+  if (!found.length) {
+    const session = { id: uid(), sent: [], full: false, until: 0 };
+    writeFeedbackSession(session);
+    return session;
+  }
+  return {
+    id: found[0].id,
+    sent: [...new Set(found.flatMap((s) => s.sent))].sort((a, b) => a - b).slice(-10),
+    full: found.some((s) => s.full),
+    until: Math.max(...found.map((s) => s.until)),
+  };
+}
+
+function writeFeedbackSession(session) {
+  const value = JSON.stringify(session);
+  try {
+    sessionStorage.setItem(FEEDBACK_SESSION_KEY, value);
+  } catch { /* private mode, storage full… */ }
+  try {
+    // No expiry date: the browser deletes it when it is closed.
+    const secure = location.protocol === 'https:' ? '; Secure' : '';
+    document.cookie = `${FEEDBACK_COOKIE}=${encodeURIComponent(value)}; SameSite=Lax${secure}`;
+  } catch { /* cookies unavailable */ }
+}
+
+/** How many messages are left, and how long before the next one may be sent. */
+function feedbackQuota(now = Date.now()) {
+  const session = readFeedbackSession();
+  const remaining = session.full ? 0 : Math.max(0, FEEDBACK_LIMITS.perSession - session.sent.length);
+  const last = session.sent.length ? session.sent[session.sent.length - 1] : -Infinity;
+  const waitMs = Math.min(
+    FEEDBACK_LIMITS.minIntervalMs, // a clock set back must not block for ever
+    Math.max(0, last + FEEDBACK_LIMITS.minIntervalMs - now, session.until - now),
+  );
+  return { remaining, waitMs, session };
+}
+
+/** Limit line, Send button (“Wait 42 s”) and countdown. */
+function updateFeedbackLimit() {
+  const { remaining, waitMs } = feedbackQuota();
+  const waiting = remaining > 0 && waitMs > 0;
+  const max = FEEDBACK_LIMITS.perSession;
+
+  $('#feedback-limit').textContent = remaining >= max
+    ? `Up to ${max} messages per visit, at least 1 minute apart.`
+    : remaining === 1
+      ? '1 message left for this visit.'
+      : 'No messages left for this visit.';
+
+  if (!feedbackSending) {
+    const button = $('#feedback-submit');
+    button.disabled = remaining === 0 || waiting;
+    button.classList.toggle('is-waiting', button.disabled);
+    $('#feedback-submit-label').textContent = remaining === 0
+      ? 'Limit reached'
+      : waiting ? `Wait ${Math.ceil(waitMs / 1000)} s` : 'Send';
+  }
+
+  if (waiting && !feedbackTicker) {
+    feedbackTicker = setInterval(() => {
+      if (state.route === 'feedback') updateFeedbackLimit();
+      else stopFeedbackTicker();
+    }, 500);
+  } else if (!waiting && feedbackTicker) {
+    stopFeedbackTicker();
+    if ($('#feedback-error').textContent === FEEDBACK_ERRORS.too_soon) setFeedbackError('');
+  }
+}
+
+function stopFeedbackTicker() {
+  clearInterval(feedbackTicker);
+  feedbackTicker = 0;
+}
+
+/** Thank-you card, after a send (justSent) or when the limit is already reached. */
+function showFeedbackDone(justSent) {
+  const { remaining } = feedbackQuota();
+  const limitReached = remaining === 0;
+  $('#feedback-form').hidden = true;
+  $('#feedback-done').hidden = false;
+  $('#feedback-done-text').textContent = justSent
+    ? 'Your message is on its way to the Brand Hunters team.'
+    : FEEDBACK_ERRORS.session_limit;
+  $('#feedback-done-limit').textContent = justSent
+    ? `${FEEDBACK_ERRORS.session_limit} Thanks for all your feedback!`
+    : 'Thanks for all your feedback! You can write to us again on your next visit.';
+  $('#feedback-done-limit').hidden = !limitReached;
+  $('#feedback-again').hidden = limitReached;
 }
 
 function updateFeedbackCount() {
@@ -1992,8 +2130,12 @@ function setFeedbackError(text) {
 
 function setFeedbackSending(sending) {
   feedbackSending = sending;
-  $('#feedback-submit').disabled = sending;
-  $('#feedback-submit-label').textContent = sending ? 'Sending…' : 'Send';
+  if (sending) {
+    $('#feedback-submit').disabled = true;
+    $('#feedback-submit-label').textContent = 'Sending…';
+  } else {
+    updateFeedbackLimit();
+  }
 }
 
 async function submitFeedback() {
@@ -2005,6 +2147,12 @@ async function submitFeedback() {
   if (!message) {
     setFeedbackError(FEEDBACK_ERRORS.message_required);
     messageInput.focus();
+    return;
+  }
+  const quota = feedbackQuota();
+  if (quota.remaining === 0 || quota.waitMs > 0) {
+    setFeedbackError(quota.remaining === 0 ? FEEDBACK_ERRORS.session_limit : FEEDBACK_ERRORS.too_soon);
+    updateFeedbackLimit();
     return;
   }
   if (location.protocol === 'file:' && !/^https?:/i.test(FEEDBACK_ENDPOINT)) {
@@ -2025,6 +2173,7 @@ async function submitFeedback() {
         message,
         website: $('#feedback-website').value, // spam trap, normally empty
         elapsedMs: Date.now() - (feedbackShownAt || Date.now()),
+        sessionId: quota.session.id, // lets the server apply the same limits
       }),
       signal: controller.signal,
     });
@@ -2032,14 +2181,24 @@ async function submitFeedback() {
     if (!response.ok || !data.ok) {
       // 404/405: no feedback function behind this address (e.g. GitHub Pages alone)
       const code = data.error || ([404, 405].includes(response.status) ? 'not_configured' : 'network');
+      if (code === 'too_soon' || code === 'session_limit') {
+        // The server knows better (another tab, cleared storage…): adopt its answer.
+        const session = readFeedbackSession();
+        if (code === 'session_limit') session.full = true;
+        else session.until = Date.now() + Math.min(60, Math.max(1, Number(data.retryAfter) || 60)) * 1000;
+        writeFeedbackSession(session);
+      }
       setFeedbackError(FEEDBACK_ERRORS[code] || FEEDBACK_ERRORS.network);
       return;
     }
+    const session = readFeedbackSession();
+    session.sent.push(Date.now());
+    session.until = 0;
+    writeFeedbackSession(session);
     teamInput.value = '';
     messageInput.value = '';
     updateFeedbackCount();
-    $('#feedback-form').hidden = true;
-    $('#feedback-done').hidden = false;
+    showFeedbackDone(true);
     $('#feedback-done-title').focus({ preventScroll: true });
     showToast('Message sent. Thank you!');
   } catch {
@@ -2051,10 +2210,15 @@ async function submitFeedback() {
 }
 
 function feedbackAgain() {
+  if (feedbackQuota().remaining === 0) {
+    showFeedbackDone(false);
+    return;
+  }
   $('#feedback-done').hidden = true;
   $('#feedback-form').hidden = false;
   feedbackShownAt = Date.now();
   setFeedbackError('');
+  updateFeedbackLimit(); // the message can be written while the minute runs out
   $('#feedback-message').focus();
 }
 

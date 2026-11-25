@@ -84,10 +84,19 @@ La page Feedback contient un formulaire avec deux champs : **Team name** (facult
 
 Le reste du site n'en dépend pas : sans cette fonction, tout fonctionne, sauf l'envoi des retours.
 
-**Protections intégrées :**
+**Limites d'envoi :**
+- **1 minute minimum entre deux messages** : pendant l'attente, on peut écrire le message suivant, et le bouton affiche « Wait 42 s » ;
+- **2 messages maximum par session de navigateur** : ensuite, la page remercie et n'affiche plus le formulaire. Une nouvelle session commence quand on ferme complètement le navigateur et qu'on le rouvre.
+
+Ces limites sont vérifiées à deux endroits :
+- **Dans la page.** Elle retient les envois dans un cookie de session, partagé par tous les onglets et effacé à la fermeture du navigateur, et dans `sessionStorage`. C'est un cookie purement technique : il ne contient qu'un identifiant au hasard et les heures d'envoi. Cette barrière arrête les joueurs, mais on la contourne facilement (navigation privée, autre navigateur, outils de développement).
+- **Dans la fonction serveur.** La page envoie l'identifiant de session avec le message. Le serveur applique les mêmes règles et répond `429` sinon. Un robot qui change d'identifiant à chaque envoi est arrêté par un plafond de **20 messages par adresse IP toutes les 10 minutes**. Ce plafond est volontairement large : toute une classe connectée au même Wi-Fi partage souvent une seule adresse IP.
+
+Le serveur garde ces compteurs en mémoire. C'est un bon frein, pas un compte exact : Vercel peut redémarrer la fonction ou en lancer plusieurs copies, chacune avec ses propres compteurs. Pour des limites strictes, il faudrait une base partagée (par exemple Upstash Redis, disponible dans le Marketplace de Vercel). Ici, ce n'est pas nécessaire.
+
+**Autres protections :**
 - un champ caché qui piège les robots ;
 - un envoi trop rapide (moins de 2,5 s) est ignoré ;
-- 5 messages maximum par appareil toutes les 10 minutes ;
 - vérification des longueurs ;
 - texte échappé dans l'e-mail.
 
@@ -163,6 +172,8 @@ Les clés gardent les noms des versions précédentes : les parties en cours et 
 | `compteurPoints.v1.preferences` | Préférences : `{ "sound": true }` |
 
 `compteurPoints.v1.boutonsRapides`, la clé des anciens boutons rapides, n'est plus utilisée.
+
+Les limites du formulaire Feedback ne sont pas dans `localStorage`. Elles vivent seulement le temps de la session de navigateur, dans `sessionStorage` (clé `compteurPoints.v1.feedbackSession`) et dans le cookie de session `bhFeedbackSession` : `{ "id": "…", "sent": [heures d'envoi], "full": false, "until": 0 }`.
 
 ### La partie en cours
 
