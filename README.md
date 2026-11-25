@@ -2,7 +2,7 @@
 
 Site web pour compter les points pendant une partie de **Brand Hunters**, **sur téléphone comme sur ordinateur**.
 HTML, CSS et JavaScript natifs : aucun framework, aucune bibliothèque, aucune étape de build.
-Toutes les données restent dans le navigateur (`localStorage`).
+Toutes les données de jeu restent dans le navigateur (`localStorage`). Seule la page Feedback utilise une petite fonction serveur, pour envoyer les messages par e-mail (voir plus bas).
 
 L'interface est **en anglais**, comme le jeu et les maquettes. Cette documentation reste en français.
 
@@ -11,6 +11,7 @@ L'interface est **en anglais**, comme le jeu et les maquettes. Cette documentati
 | `index.html` | Structure des 5 pages (New game, The hunt, résultats, History, Rules) et des fenêtres de dialogue |
 | `style.css` | Mise en page téléphone, tablette et ordinateur, d'après les maquettes |
 | `script.js` | Logique : chasseurs, primes, tours, chronomètre, sauvegarde, historique, raccourcis clavier |
+| `api/feedback.js` | Petite fonction serveur (Vercel) qui envoie les messages de la page Feedback par e-mail avec Resend |
 | `logo-brand-hunters.svg` | Logo officiel |
 | `fonts/` | Polices Bitter et Rye hébergées avec le site, avec leurs licences |
 
@@ -27,6 +28,7 @@ Chaque page a sa propre adresse, ce qui fait aussi fonctionner le bouton « reto
 | `#/results` | Affiche **WANTED** du gagnant et classement final |
 | `#/history` | **History** : parties terminées |
 | `#/rules` | **Rules** : vidéo des règles et raccourcis clavier |
+| `#/feedback` | **Feedback** : formulaire de retours, envoyé par e-mail |
 
 À l'ouverture du site, une partie en cours est reprise automatiquement. Sinon, la page New game s'affiche.
 
@@ -71,6 +73,49 @@ const RULES_VIDEO_URL = 'rules.mp4';                    // fichier vidéo placé
 ```
 
 Une vidéo YouTube est intégrée en mode « confidentialité renforcée » (`youtube-nocookie.com`).
+
+### Feedback : envoi par e-mail avec Resend
+
+La page Feedback contient un formulaire avec deux champs : **Team name** (facultatif) et **Message** (2 000 caractères maximum). Le message est envoyé par e-mail grâce à [Resend](https://resend.com).
+
+**Pourquoi une fonction serveur ?** La clé API de Resend est secrète : placée dans le code du site, n'importe qui pourrait la lire et envoyer des e-mails à votre nom. Resend refuse d'ailleurs les appels venant directement d'une page web. Le formulaire envoie donc le message à `api/feedback.js`, une petite fonction hébergée gratuitement sur **Vercel**, qui garde la clé et envoie l'e-mail.
+
+Le reste du site n'en dépend pas : sans cette fonction, tout fonctionne, sauf l'envoi des retours.
+
+**Protections intégrées :**
+- un champ caché qui piège les robots ;
+- un envoi trop rapide (moins de 2,5 s) est ignoré ;
+- 5 messages maximum par appareil toutes les 10 minutes ;
+- vérification des longueurs ;
+- texte échappé dans l'e-mail.
+
+#### Mise en service
+
+1. **Resend** : créez un compte sur [resend.com](https://resend.com), puis une clé API (*API Keys → Create API Key*, accès « Sending access »).
+2. **Vercel** : sur [vercel.com/new](https://vercel.com/new), importez ce dépôt GitHub (preset « Other », sans commande de build, dossier de sortie `.`). Le dossier `api/` est reconnu automatiquement.
+3. Dans le projet Vercel, **Settings → Environment Variables**, ajoutez :
+
+   | Variable | Valeur |
+   | --- | --- |
+   | `RESEND_API_KEY` | La clé Resend (commence par `re_`) |
+   | `FEEDBACK_TO` | L'adresse qui reçoit les retours (plusieurs adresses : séparez-les par des virgules) |
+   | `FEEDBACK_FROM` | *Facultatif.* Expéditeur, par défaut `Brand Hunters <onboarding@resend.dev>` |
+   | `ALLOWED_ORIGINS` | *Facultatif.* Sites autorisés à envoyer des retours, par exemple `https://votre-nom.github.io` |
+
+4. Redéployez le projet (*Deployments → Redeploy*) pour que les variables soient prises en compte. Vercel publie la branche de production du dépôt (en général `main`).
+
+**Expéditeur.** Sans nom de domaine, l'expéditeur `onboarding@resend.dev` fonctionne tout de suite, mais Resend ne livre alors qu'à l'adresse de votre compte Resend. Mettez donc cette adresse dans `FEEDBACK_TO`. Pour envoyer à d'autres adresses, vérifiez votre domaine dans Resend (*Domains*), puis indiquez par exemple `FEEDBACK_FROM = Brand Hunters <feedback@votre-domaine.com>`.
+
+#### Où héberger le site ?
+
+- **Option A, la plus simple : tout sur Vercel.** Le site et la fonction sont à la même adresse (par exemple `https://brand-hunters.vercel.app`). Il n'y a rien à changer dans le code.
+- **Option B : le site reste sur GitHub Pages.** Il faut deux réglages :
+  - dans `script.js`, remplacez `FEEDBACK_ENDPOINT` par l'adresse complète de la fonction, par exemple `'https://brand-hunters.vercel.app/api/feedback'` ;
+  - dans Vercel, mettez l'adresse du site GitHub Pages dans `ALLOWED_ORIGINS`.
+
+Si la fonction n'est pas joignable (GitHub Pages seul, ou fichier ouvert en double-clic), la page l'indique clairement au lieu d'échouer en silence.
+
+**Données personnelles.** Le formulaire ne demande ni nom ni e-mail. Le message transite par Vercel et Resend jusqu'à votre boîte mail, et la page rappelle de ne pas y mettre d'informations personnelles.
 
 ## Direction artistique
 

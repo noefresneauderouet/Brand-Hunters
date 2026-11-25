@@ -12,7 +12,8 @@
      3. Storage (localStorage)         9. Dialogs
      4. State                         10. End of hunt, results, history
      5. Navigation                    11. Rules page
-     6. New game                      12. Keyboard, events, start-up
+     6. New game                      12. Feedback
+                                      13. Keyboard, events, start-up
    ========================================================================== */
 
 
@@ -35,6 +36,16 @@ const STORAGE_KEYS = Object.freeze({
  * Leave empty to show “Rules video coming soon”.
  */
 const RULES_VIDEO_URL = '';
+
+/**
+ * Where the feedback form is sent (see api/feedback.js, which emails it with Resend).
+ * Relative path when the site is hosted on Vercel together with the function.
+ * If the site stays on GitHub Pages, put the full address of the Vercel function,
+ * e.g. 'https://brand-hunters.vercel.app/api/feedback'.
+ */
+const FEEDBACK_ENDPOINT = 'api/feedback';
+const FEEDBACK_MAX = 2000;
+const FEEDBACK_TIMEOUT_MS = 15000;
 
 const MIN_PLAYERS = 2;
 const MAX_PLAYERS = 10;
@@ -69,8 +80,8 @@ const PLAYER_COLORS = Object.freeze([
   '#4F86C6', '#E8C547', '#F07AAE', '#F8C787', '#B07A4E',
 ]);
 
-const ROUTES = Object.freeze(['new', 'hunt', 'results', 'history', 'rules']);
-const ROUTE_TITLES = Object.freeze({ new: 'New game', hunt: 'The hunt', results: 'Results', history: 'History', rules: 'Rules' });
+const ROUTES = Object.freeze(['new', 'hunt', 'results', 'history', 'rules', 'feedback']);
+const ROUTE_TITLES = Object.freeze({ new: 'New game', hunt: 'The hunt', results: 'Results', history: 'History', rules: 'Rules', feedback: 'Feedback' });
 const IS_MAC = /Mac|iPhone|iPad|iPod/.test(navigator.platform || navigator.userAgent);
 
 const SHORTCUTS = [
@@ -472,6 +483,7 @@ function showScreen(requested, { initial = false } = {}) {
   else if (route === 'results') renderResults();
   else if (route === 'history') renderHistory();
   else if (route === 'rules') renderRules();
+  else if (route === 'feedback') renderFeedback();
 
   if (changed) {
     window.scrollTo(0, 0);
@@ -1922,7 +1934,113 @@ function renderRules() {
 
 
 /* =============================================================================
-   12. Keyboard, events and start-up
+   12. Feedback
+   -----------------------------------------------------------------------------
+   The form is posted to FEEDBACK_ENDPOINT (api/feedback.js on Vercel), which
+   emails it with Resend. The Resend key never reaches the browser.
+   ========================================================================== */
+
+let feedbackShownAt = 0;   // used to spot bots that fill the form instantly
+let feedbackSending = false;
+
+const FEEDBACK_ERRORS = {
+  message_required: 'Write a message first.',
+  message_too_long: `Your message is too long (${FEEDBACK_MAX} characters max).`,
+  team_too_long: 'The team name is too long (60 characters max).',
+  too_many_requests: 'Too many messages in a short time. Please try again in a few minutes.',
+  not_configured: 'Feedback isn’t set up on this site yet. Please try again later.',
+  offline: 'Sending only works once the site is online.',
+  network: 'Couldn’t send your message. Check your connection and try again.',
+};
+
+function renderFeedback() {
+  if (!feedbackShownAt) feedbackShownAt = Date.now();
+  updateFeedbackCount();
+}
+
+function updateFeedbackCount() {
+  const length = $('#feedback-message').value.length;
+  const count = $('#feedback-count');
+  count.textContent = `${formatNumber(length)} / ${formatNumber(FEEDBACK_MAX)}`;
+  count.classList.toggle('is-near', length > FEEDBACK_MAX * 0.9);
+}
+
+function setFeedbackError(text) {
+  $('#feedback-error').textContent = text;
+  $('#feedback-message').setAttribute('aria-invalid', text ? 'true' : 'false');
+}
+
+function setFeedbackSending(sending) {
+  feedbackSending = sending;
+  $('#feedback-submit').disabled = sending;
+  $('#feedback-submit-label').textContent = sending ? 'Sending…' : 'Send';
+}
+
+async function submitFeedback() {
+  if (feedbackSending) return;
+  const teamInput = $('#feedback-team');
+  const messageInput = $('#feedback-message');
+  const team = teamInput.value.replace(/\s+/g, ' ').trim();
+  const message = messageInput.value.trim();
+  if (!message) {
+    setFeedbackError(FEEDBACK_ERRORS.message_required);
+    messageInput.focus();
+    return;
+  }
+  if (location.protocol === 'file:' && !/^https?:/i.test(FEEDBACK_ENDPOINT)) {
+    setFeedbackError(FEEDBACK_ERRORS.offline);
+    return;
+  }
+
+  setFeedbackError('');
+  setFeedbackSending(true);
+  const controller = new AbortController();
+  const timeout = setTimeout(() => controller.abort(), FEEDBACK_TIMEOUT_MS);
+  try {
+    const response = await fetch(FEEDBACK_ENDPOINT, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        team,
+        message,
+        website: $('#feedback-website').value, // spam trap, normally empty
+        elapsedMs: Date.now() - (feedbackShownAt || Date.now()),
+      }),
+      signal: controller.signal,
+    });
+    const data = await response.json().catch(() => ({}));
+    if (!response.ok || !data.ok) {
+      // 404/405: no feedback function behind this address (e.g. GitHub Pages alone)
+      const code = data.error || ([404, 405].includes(response.status) ? 'not_configured' : 'network');
+      setFeedbackError(FEEDBACK_ERRORS[code] || FEEDBACK_ERRORS.network);
+      return;
+    }
+    teamInput.value = '';
+    messageInput.value = '';
+    updateFeedbackCount();
+    $('#feedback-form').hidden = true;
+    $('#feedback-done').hidden = false;
+    $('#feedback-done-title').focus({ preventScroll: true });
+    showToast('Message sent. Thank you!');
+  } catch {
+    setFeedbackError(FEEDBACK_ERRORS.network);
+  } finally {
+    clearTimeout(timeout);
+    setFeedbackSending(false);
+  }
+}
+
+function feedbackAgain() {
+  $('#feedback-done').hidden = true;
+  $('#feedback-form').hidden = false;
+  feedbackShownAt = Date.now();
+  setFeedbackError('');
+  $('#feedback-message').focus();
+}
+
+
+/* =============================================================================
+   13. Keyboard, events and start-up
    ========================================================================== */
 
 let toastTimeout = null;
@@ -2031,6 +2149,8 @@ const ACTIONS = {
   'replay-history': (el) => replayFromHistory(el.dataset.id),
   'delete-history': (el) => deleteHistoryItem(el.dataset.id),
   'clear-history': clearHistory,
+  // Feedback
+  'feedback-again': feedbackAgain,
 };
 
 function onClick(event) {
@@ -2049,6 +2169,10 @@ function onInput(event) {
   if (target.matches('[data-name-index]')) onNameInput(target);
   else if (target.id === 'custom-value') onCustomInput(target);
   else if (target.matches('[data-bounty-key]')) target.removeAttribute('aria-invalid');
+  else if (target.id === 'feedback-message') {
+    updateFeedbackCount();
+    if (target.value.trim()) setFeedbackError('');
+  }
 }
 
 function onChange(event) {
@@ -2083,6 +2207,20 @@ function onKeydown(event) {
     if (target.matches && target.matches('.time-field')) commitTimerField(target);
     startGame();
     return;
+  }
+
+  // Feedback: Ctrl+Enter sends; Enter in the team name goes to the message.
+  if (event.key === 'Enter' && state.route === 'feedback' && !$('dialog[open]')) {
+    if (event.ctrlKey || event.metaKey) {
+      event.preventDefault();
+      submitFeedback();
+      return;
+    }
+    if (target.id === 'feedback-team') {
+      event.preventDefault();
+      $('#feedback-message').focus();
+      return;
+    }
   }
 
   // Enter in the round timer: applies the time without starting the hunt.
@@ -2157,6 +2295,10 @@ function bindEvents() {
   $('#bounty-form').addEventListener('submit', (event) => {
     event.preventDefault();
     saveBountyDialog();
+  });
+  $('#feedback-form').addEventListener('submit', (event) => {
+    event.preventDefault();
+    submitFeedback();
   });
 
   // A tap on the dimmed background closes the window.

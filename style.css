@@ -149,7 +149,8 @@ a {
 
 button,
 input,
-select {
+select,
+textarea {
   font: inherit;
   color: inherit;
 }
@@ -2026,6 +2027,133 @@ button.tier:active {
 }
 
 
+/* 11b. Feedback ============================================================= */
+
+.feedback-card {
+  display: flex;
+  flex-direction: column;
+  gap: 14px;
+}
+
+.field {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.field-label {
+  font-size: 1.125rem;
+  font-weight: 600;
+}
+
+.field-label small {
+  color: var(--muted);
+  font-size: 0.85em;
+  font-weight: 500;
+}
+
+/* Light fields, like the hunters' names in the mockups */
+.feedback-card .input {
+  border-color: transparent;
+  background: var(--sand-light);
+  color: var(--plum);
+}
+
+.feedback-card .input::placeholder {
+  color: rgba(43, 21, 40, 0.5);
+}
+
+.feedback-card .input:focus {
+  border-color: var(--orange);
+  box-shadow: 0 0 0 4px rgba(241, 137, 48, 0.3);
+}
+
+.feedback-card .input[aria-invalid="true"] {
+  border-color: var(--red);
+}
+
+.textarea {
+  min-height: 170px;
+  resize: vertical;
+  font-weight: 500;
+  line-height: 1.5;
+}
+
+.field-foot {
+  display: flex;
+  align-items: flex-start;
+  gap: 12px;
+  margin-top: -6px;
+}
+
+.field-foot .field-error {
+  flex: 1;
+}
+
+.char-count {
+  margin-left: auto;
+  color: var(--muted);
+  font-size: 0.8125rem;
+  white-space: nowrap;
+  font-variant-numeric: tabular-nums;
+}
+
+.char-count.is-near {
+  color: var(--minus-text);
+  font-weight: 700;
+}
+
+.feedback-note {
+  text-align: center;
+}
+
+.feedback-card .cta {
+  align-self: center;
+}
+
+.cta:disabled {
+  cursor: progress;
+  opacity: 0.65;
+  transform: none;
+}
+
+.feedback-done {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 10px;
+  padding: 28px 20px;
+  text-align: center;
+}
+
+.feedback-done-icon {
+  display: grid;
+  place-items: center;
+  width: 72px;
+  height: 72px;
+  border-radius: 50%;
+  background: linear-gradient(180deg, #FFC64F, var(--orange));
+  color: var(--plum);
+  box-shadow: 0 6px 18px rgba(241, 137, 48, 0.35);
+}
+
+.feedback-done-icon .icon {
+  width: 2.2em;
+  height: 2.2em;
+}
+
+.feedback-done-title {
+  font-size: 2rem;
+  font-style: italic;
+  font-weight: 900;
+  text-transform: uppercase;
+}
+
+.feedback-done-title:focus {
+  outline: none;
+}
+
+
 /* 12. Dialogs =============================================================== */
 
 dialog {
@@ -2366,6 +2494,29 @@ dialog {
 
 /* 16. Small phones, tablets and computers =================================== */
 
+/* Phones: up to 5 navigation icons next to the logo */
+@media (max-width: 479px) {
+  .topbar-logo img {
+    height: 48px;
+  }
+
+  .nav {
+    gap: 2px;
+  }
+
+  .nav-link {
+    min-width: 40px;
+    height: 42px;
+    padding: 0 8px;
+    border-radius: 14px;
+  }
+
+  .nav-link .icon {
+    width: 1.4em;
+    height: 1.4em;
+  }
+}
+
 @media (max-width: 359px) {
   .main,
   .topbar {
@@ -2377,13 +2528,13 @@ dialog {
   }
 
   .topbar-logo img {
-    height: 46px;
+    height: 40px;
   }
 
   .nav-link {
-    min-width: 42px;
-    height: 42px;
-    padding: 0 9px;
+    min-width: 38px;
+    height: 40px;
+    padding: 0 7px;
   }
 
   .cta {
@@ -2477,9 +2628,10 @@ dialog {
     padding: 8px 0 0;
   }
 
-  /* Results, history, rules: centred */
+  /* Results, history, rules, feedback: centred */
   .screen-results,
-  .screen-rules {
+  .screen-rules,
+  .screen-feedback {
     width: min(100%, 720px);
     margin: 0 auto;
   }
