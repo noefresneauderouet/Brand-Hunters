@@ -100,6 +100,11 @@ const clamp = (value, min, max) => Math.min(max, Math.max(min, value));
 const range = (n) => Array.from({ length: n }, (_, i) => i);
 const roundScore = (n) => Math.round(n * 100) / 100;
 const uid = () => Date.now().toString(36) + Math.random().toString(36).slice(2, 8);
+
+/** Only touches the page when the text really changes (called 4 times per second). */
+function setText(element, text) {
+  if (element.textContent !== text) element.textContent = text;
+}
 const prefersReducedMotion = () => window.matchMedia('(prefers-reduced-motion: reduce)').matches;
 const pad2 = (n) => String(n).padStart(2, '0');
 
@@ -857,7 +862,7 @@ async function startGame() {
       durationMs: s.turnTimer.seconds * 1000,
       custom: s.turnTimer.custom,
       accMs: 0,
-      since: now,
+      since: null, // waits for “Start”
       expired: false,
     },
   };
@@ -1223,7 +1228,6 @@ function changeTurn(direction) {
   const count = g.players.length;
   if (direction < 0 && g.round <= 1 && g.current === 0) return;
   // Read before moving: penalties still pending now are dropped (bounty not found)
-  const wasPaused = isPaused(g);
   const cancelled = pendingPenalties(g);
   let next = g.current + direction;
   if (next >= count) {
@@ -1235,14 +1239,10 @@ function changeTurn(direction) {
   }
   g.current = next;
   g.target = next;
-  if (wasPaused) resumeClock(g); // moving on resumes the hunt
-  resetTurnTimer(g);
+  resetTurnTimer(g); // full time, waiting for “Start”
   saveGame();
   renderHunt();
-  const messages = [];
-  if (cancelled.length) messages.push(`Penalties cancelled: ${describePenalties(cancelled)}`);
-  if (wasPaused) messages.push('Timer resumed');
-  if (messages.length) showToast(messages.join(' · '), cancelled.length ? 3000 : 1800);
+  if (cancelled.length) showToast(`Penalties cancelled: ${describePenalties(cancelled)}`, 3000);
 }
 
 
@@ -1253,7 +1253,9 @@ function changeTurn(direction) {
    stay right if the phone sleeps or the page is reloaded.
      clock     = { accMs, since }   time already counted + start of the current run
      turnTimer = { enabled, durationMs, accMs, since, expired }
-   since === null means “paused”.
+   since === null means “stopped”. The hunt clock runs from the start of the
+   hunt. The round timer only runs once “Start” is pressed: it is reset and
+   stopped at each new hunter, so every hunter starts when ready.
    ========================================================================== */
 
 const isPaused = (g) => g.clock.since == null;
@@ -1261,31 +1263,53 @@ const elapsedSince = (since, now) => (since == null ? 0 : Math.max(0, now - sinc
 const gameElapsed = (g, now = Date.now()) => g.clock.accMs + elapsedSince(g.clock.since, now);
 const turnElapsed = (g, now = Date.now()) => g.turnTimer.accMs + elapsedSince(g.turnTimer.since, now);
 
+/** Round timer: 'off' | 'ready' (full, waiting for Start) | 'running' | 'paused' | 'expired'. */
+function turnState(g) {
+  const timer = g.turnTimer;
+  if (!timer.enabled) return 'off';
+  if (timer.expired) return 'expired';
+  if (timer.since != null) return 'running';
+  return timer.accMs > 0 ? 'paused' : 'ready';
+}
+
+/** What the big ring button stops: the round timer, or the hunt clock when there is none. */
+function isHuntRunning(g) {
+  const turn = turnState(g);
+  if (turn === 'off' || turn === 'expired') return !isPaused(g);
+  return turn === 'running';
+}
+
+/** Pause: stops the hunt clock and the round timer. */
 function pauseClock(g, now = Date.now()) {
-  if (isPaused(g)) return;
-  g.clock.accMs = gameElapsed(g, now);
-  g.clock.since = null;
-  g.turnTimer.accMs = turnElapsed(g, now);
-  g.turnTimer.since = null;
+  if (!isPaused(g)) {
+    g.clock.accMs = gameElapsed(g, now);
+    g.clock.since = null;
+  }
+  if (g.turnTimer.since != null) {
+    g.turnTimer.accMs = turnElapsed(g, now);
+    g.turnTimer.since = null;
+  }
 }
 
-function resumeClock(g, now = Date.now()) {
-  if (!isPaused(g)) return;
-  g.clock.since = now;
-  g.turnTimer.since = now;
+/** Start / resume: the hunt clock and, if there is one, the round timer. */
+function startClock(g, now = Date.now()) {
+  if (isPaused(g)) g.clock.since = now;
+  if (g.turnTimer.enabled && g.turnTimer.since == null) g.turnTimer.since = now;
 }
 
-function resetTurnTimer(g, now = Date.now()) {
+/** Full time again, stopped: waits for “Start”. */
+function resetTurnTimer(g) {
   g.turnTimer.accMs = 0;
-  g.turnTimer.since = isPaused(g) ? null : now;
+  g.turnTimer.since = null;
   g.turnTimer.expired = false;
 }
 
+/** The big ring button: Start / Pause / Resume. */
 function togglePause() {
   const g = state.game;
   if (!g) return;
-  if (isPaused(g)) resumeClock(g);
-  else pauseClock(g);
+  if (isHuntRunning(g)) pauseClock(g);
+  else startClock(g);
   saveGame();
   renderTimerControls();
   tick();
@@ -1296,41 +1320,49 @@ function restartTurnTimer() {
   if (!g || !g.turnTimer.enabled) return;
   resetTurnTimer(g);
   saveGame();
+  renderTimerControls();
   tick();
 }
 
-/** Changes the round timer during a hunt (it restarts if the duration changes). */
+/**
+ * Changes the round timer during a hunt. A new duration resets it: it then
+ * waits for “Start”. Returns true if something changed.
+ */
 function setGameTurnTimer({ enabled, seconds, custom }) {
   const g = state.game;
-  if (!g) return;
+  if (!g) return false;
   const timer = g.turnTimer;
   const durationMs = seconds * 1000;
-  const changed = enabled !== timer.enabled || durationMs !== timer.durationMs;
+  const changed = enabled !== timer.enabled || (enabled && durationMs !== timer.durationMs);
   timer.enabled = enabled;
   timer.durationMs = durationMs;
   timer.custom = custom;
-  if (changed) {
-    if (enabled) resetTurnTimer(g);
-    else timer.expired = false;
-  }
+  if (changed) resetTurnTimer(g);
   state.setup.turnTimer = normalizeTurnTimer({ enabled, seconds }); // kept for the next hunt
   saveSetup();
   saveGame();
+  renderTimerControls();
   tick();
+  return changed;
 }
 
 function renderTimerControls() {
   const g = state.game;
   if (!g) return;
-  const paused = isPaused(g);
+  const running = isHuntRunning(g);
+  const turn = turnState(g);
   const pauseBtn = $('#pause-btn');
-  pauseBtn.innerHTML = icon(paused ? 'play' : 'pause');
-  pauseBtn.setAttribute('aria-label', paused ? 'Resume' : 'Pause');
+  pauseBtn.innerHTML = icon(running ? 'pause' : 'play');
+  pauseBtn.setAttribute('aria-label', running ? 'Pause' : turn === 'ready' ? 'Start the round timer' : 'Resume');
+  dom.timer.classList.toggle('is-running', running);
+  dom.timer.classList.toggle('is-ready', turn === 'ready');
+  dom.timer.classList.toggle('is-paused', !running && turn !== 'ready');
+  // The time can be changed right on the timer while it isn't counting down
+  dom.timer.classList.toggle('is-editable', ['off', 'ready', 'paused'].includes(turn));
   const soundBtn = $('#sound-btn');
   soundBtn.innerHTML = icon(state.prefs.sound ? 'volume' : 'volume-off');
   soundBtn.setAttribute('aria-label', state.prefs.sound ? 'Sound on (tap to mute)' : 'Sound off (tap to turn on)');
   soundBtn.setAttribute('aria-pressed', String(state.prefs.sound));
-  dom.timer.classList.toggle('is-paused', paused);
 }
 
 /** Runs 4 times per second: time display, ring, end of the round. */
@@ -1343,7 +1375,7 @@ function tick() {
 
   if (!timer.enabled) {
     dom.timerTime.textContent = huntTime;
-    dom.timerCaption.textContent = 'Hunt time';
+    setText(dom.timerCaption, isPaused(g) ? 'Hunt time · paused' : 'Hunt time');
     dom.timer.classList.add('is-off');
     dom.timer.classList.remove('is-warning', 'is-expired');
     return;
@@ -1359,7 +1391,10 @@ function tick() {
 
   const fraction = remaining / timer.durationMs;
   dom.timerTime.textContent = formatCountdown(remaining);
-  dom.timerCaption.textContent = timer.expired ? 'Time’s up!' : `Hunt ${huntTime}`;
+  const turn = turnState(g);
+  setText(dom.timerCaption, turn === 'expired' ? 'Time’s up!'
+    : turn === 'ready' ? 'Press start'
+      : turn === 'paused' ? 'Paused' : `Hunt ${huntTime}`);
   dom.timerProgress.style.strokeDasharray = `${(fraction * 100).toFixed(2)} 100`;
   // Knob at the end of the arc: the gauge goes from 150° to 390° (open at the bottom)
   const angle = ((150 + 240 * fraction) * Math.PI) / 180;
@@ -1686,6 +1721,65 @@ function saveBountyDialog() {
   if (state.route === 'new') renderSetupBounty();
   if (state.route === 'hunt') renderHunt();
   showToast('Bounty values saved');
+}
+
+/* --- Round timer picker (tap the time on The hunt) ----------------------- */
+
+function openTimerPicker() {
+  const g = state.game;
+  if (!g) return;
+  const timer = g.turnTimer;
+  const seconds = Math.round(timer.durationMs / 1000);
+  const current = timer.enabled ? seconds : 0;
+  $('#time-chips').innerHTML = [...TURN_PRESETS, 0].map((value) => `
+    <button type="button" class="time-chip${value === 0 ? ' time-chip-off' : ''}" data-action="pick-turn-time" data-seconds="${value}"
+      aria-pressed="${value === current}">${value ? `${value} s` : 'Off'}</button>`).join('');
+  const custom = $('#timer-custom');
+  custom.value = timer.enabled && !TURN_PRESETS.includes(seconds) ? formatTimerSetting(seconds) : '';
+  setCustomTimeError(null);
+  openDialog($('#timer-dialog'));
+}
+
+function setCustomTimeError(error) {
+  const help = $('#timer-custom-help');
+  help.classList.toggle('is-error', Boolean(error));
+  help.textContent = error || 'Seconds (90) or minutes:seconds (1:30), from 5 s to 60 min.';
+  $('#timer-custom').setAttribute('aria-invalid', error ? 'true' : 'false');
+}
+
+/** Applies a round time (0 = no round timer) and closes the picker. */
+function pickTurnTime(seconds) {
+  const g = state.game;
+  if (!g) return;
+  const config = seconds
+    ? normalizeTurnTimer({ enabled: true, seconds })
+    : normalizeTurnTimer({ enabled: false, seconds: Math.round(g.turnTimer.durationMs / 1000) });
+  const changed = setGameTurnTimer(config);
+  $('#timer-dialog').close('ok');
+  if (!changed) return;
+  showToast(config.enabled ? `Round timer: ${formatTurnSeconds(config.seconds)} · press start` : 'Round timer off');
+}
+
+function submitCustomTime() {
+  const raw = $('#timer-custom').value.trim().toLowerCase();
+  if (['off', '0', '0:00', '00:00'].includes(raw)) {
+    pickTurnTime(0);
+    return;
+  }
+  const seconds = raw ? parseTurnDuration(raw) : null;
+  if (seconds === null) {
+    setCustomTimeError('Enter a time between 5 s and 60 min (e.g. 90 or 1:30).');
+    $('#timer-custom').focus();
+    return;
+  }
+  pickTurnTime(seconds);
+}
+
+/** 45 → “45 s”, 90 → “1:30”, 120 → “2 min”. */
+function formatTurnSeconds(seconds) {
+  if (seconds < 60) return `${seconds} s`;
+  if (seconds % 60 === 0) return `${seconds / 60} min`;
+  return `${Math.floor(seconds / 60)}:${pad2(seconds % 60)}`;
 }
 
 /* --- Hunt settings ------------------------------------------------------- */
@@ -2261,6 +2355,8 @@ const ACTIONS = {
   'prev-player': () => changeTurn(-1),
   'toggle-pause': togglePause,
   'restart-turn-timer': restartTurnTimer,
+  'open-timer-picker': openTimerPicker,
+  'pick-turn-time': (el) => pickTurnTime(Number(el.dataset.seconds)),
   'toggle-sound': toggleSound,
   'tab': (el) => setTab(el.dataset.tab),
   'open-settings': openSettings,
@@ -2298,6 +2394,7 @@ function onInput(event) {
   if (target.matches('[data-name-index]')) onNameInput(target);
   else if (target.id === 'custom-value') onCustomInput(target);
   else if (target.matches('[data-bounty-key]')) target.removeAttribute('aria-invalid');
+  else if (target.id === 'timer-custom') setCustomTimeError(null);
   else if (target.id === 'feedback-message') {
     updateFeedbackCount();
     if (target.value.trim()) setFeedbackError('');
@@ -2394,6 +2491,10 @@ function bindEvents() {
   $('#setup-form').addEventListener('submit', (event) => {
     event.preventDefault();
     startGame();
+  });
+  $('#timer-form').addEventListener('submit', (event) => {
+    event.preventDefault();
+    submitCustomTime();
   });
   $('#custom-form').addEventListener('submit', (event) => {
     event.preventDefault();

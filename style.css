@@ -1241,6 +1241,46 @@ button.tier:active {
   padding-bottom: 20%;
 }
 
+/* The time is a button: tap it to change the round timer */
+.timer-time-btn {
+  position: relative;
+  display: inline-flex;
+  padding: 2px 6px;
+  border: 0;
+  border-radius: 14px;
+  background: none;
+  color: inherit;
+  cursor: pointer;
+  -webkit-tap-highlight-color: transparent;
+}
+
+.timer-time-btn:focus-visible {
+  outline: 2px solid var(--sand);
+  outline-offset: 2px;
+}
+
+.timer-edit-icon {
+  position: absolute;
+  right: -10px;
+  bottom: -4px;
+  width: 26px;
+  height: 26px;
+  padding: 5px;
+  border-radius: 50%;
+  background: var(--sand-light);
+  color: var(--plum);
+  box-shadow: 0 2px 6px rgba(10, 0, 8, 0.45);
+  opacity: 0;
+  transform: scale(0.6);
+  transition: opacity 0.15s ease, transform 0.15s ease;
+  pointer-events: none;
+}
+
+.timer.is-editable .timer-edit-icon {
+  opacity: 1;
+  transform: none;
+}
+
 .timer-time {
   color: var(--cream);
   font-size: clamp(3rem, 15vw, 4.25rem);
@@ -1333,6 +1373,61 @@ button.tier:active {
 
 .timer.is-paused .timer-time {
   animation: blink 1.2s ease-in-out infinite;
+}
+
+/* Waiting for “Start”: the play button calls for a tap */
+.timer.is-ready .ring-btn-main {
+  animation: ready-pulse 1.6s ease-out infinite;
+}
+
+/* Round timer picker */
+.time-chips {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 8px;
+}
+
+.time-chip {
+  min-height: 52px;
+  padding: 0 8px;
+  border: 1.5px solid rgba(248, 199, 135, 0.45);
+  border-radius: 14px;
+  background: rgba(18, 4, 14, 0.4);
+  color: var(--cream);
+  font-size: 1.125rem;
+  font-weight: 700;
+  font-variant-numeric: tabular-nums;
+  transition: transform 0.08s ease;
+}
+
+.time-chip:active {
+  transform: scale(0.95);
+}
+
+.time-chip-off {
+  color: var(--muted);
+}
+
+.time-chip[aria-pressed="true"] {
+  border-color: transparent;
+  background: linear-gradient(180deg, #FFC64F, var(--orange));
+  color: var(--plum);
+}
+
+.field-label-small {
+  margin-bottom: -6px;
+  color: var(--sand);
+  font-size: 0.9375rem;
+  font-weight: 600;
+}
+
+#timer-form .time-help {
+  margin-top: -6px;
+  text-align: left;
+}
+
+.timer-dialog-note b {
+  color: var(--sand);
 }
 
 /* Add points */
@@ -2381,6 +2476,10 @@ dialog::backdrop {
 @keyframes key-press { 40% { transform: scale(0.93); filter: brightness(0.85); } }
 @keyframes float-up { from { opacity: 1; transform: translateY(4px); } to { opacity: 0; transform: translateY(-22px); } }
 @keyframes pulse-opacity { 50% { opacity: 0.45; } }
+@keyframes ready-pulse {
+  0% { box-shadow: inset 0 2px 0 rgba(255, 255, 255, 0.4), 0 6px 16px rgba(241, 137, 48, 0.4), 0 0 0 0 rgba(255, 198, 79, 0.7); }
+  100% { box-shadow: inset 0 2px 0 rgba(255, 255, 255, 0.4), 0 6px 16px rgba(241, 137, 48, 0.4), 0 0 0 16px rgba(255, 198, 79, 0); }
+}
 @keyframes alarm-flash { from { opacity: 0; } to { opacity: 1; } }
 @keyframes modal-in { from { opacity: 0; transform: translateY(8px) scale(0.98); } }
 @keyframes poster-in { from { opacity: 0; transform: rotate(-8deg) scale(0.7); } }
@@ -2411,8 +2510,13 @@ dialog::backdrop {
   .chip-btn:hover,
   .icon-btn:hover:not(:disabled),
   .tab:not([aria-selected="true"]):hover,
-  .target-chip:not(.is-selected):hover {
+  .target-chip:not(.is-selected):hover,
+  .time-chip:not([aria-pressed="true"]):hover {
     background-color: rgba(248, 199, 135, 0.12);
+  }
+
+  .timer.is-editable .timer-time-btn:hover {
+    background: rgba(248, 199, 135, 0.08);
   }
 
   .pill-btn-sand:hover:not(:disabled) {
@@ -2630,6 +2734,11 @@ dialog {
 
   .timer-time {
     font-size: 5rem;
+  }
+
+  .timer-edit-icon {
+    right: -2px;
+    bottom: 2px;
   }
 
   .tier {

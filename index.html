@@ -229,10 +229,15 @@
           <circle class="timer-knob" id="timer-knob" r="7" cx="169.28" cy="140"/>
         </svg>
         <div class="timer-face">
-          <p class="timer-time" id="timer-time" role="timer">00:00</p>
+          <!-- Tap the time to change the round timer -->
+          <button type="button" class="timer-time-btn" id="timer-edit" data-action="open-timer-picker">
+            <span class="timer-time" id="timer-time">00:00</span>
+            <svg class="icon timer-edit-icon" aria-hidden="true"><use href="#i-edit"></use></svg>
+            <span class="visually-hidden">, change the round time</span>
+          </button>
           <p class="timer-caption" id="timer-caption">Hunt time</p>
           <div class="timer-controls">
-            <button type="button" class="ring-btn" data-action="restart-turn-timer" id="restart-btn" aria-label="Restart the round timer">
+            <button type="button" class="ring-btn" data-action="restart-turn-timer" id="restart-btn" aria-label="Reset the round timer">
               <svg class="icon" aria-hidden="true"><use href="#i-restart"></use></svg>
             </button>
             <button type="button" class="ring-btn ring-btn-main" data-action="toggle-pause" id="pause-btn" aria-label="Pause">
@@ -438,6 +443,23 @@
         <button type="button" class="pill-btn" data-action="close-dialog">Cancel</button>
         <button type="submit" class="pill-btn pill-btn-sand">Save</button>
       </div>
+    </form>
+  </dialog>
+
+  <!-- Round timer, opened by tapping the time on The hunt -->
+  <dialog class="modal modal-top" id="timer-dialog" aria-labelledby="timer-dialog-title">
+    <form class="dialog-body" id="timer-form" novalidate>
+      <h2 class="dialog-title" id="timer-dialog-title">Round timer</h2>
+      <div class="time-chips" id="time-chips" role="group" aria-label="Time per hunter"></div>
+      <label class="field-label-small" for="timer-custom">Other time</label>
+      <div class="number-entry">
+        <input class="input" id="timer-custom" type="text" inputmode="numeric" enterkeyhint="done" autocomplete="off"
+          maxlength="8" placeholder="1:30" aria-describedby="timer-custom-help">
+        <button type="submit" class="pill-btn pill-btn-sand">Set</button>
+      </div>
+      <p class="time-help" id="timer-custom-help">Seconds (90) or minutes:seconds (1:30), from 5 s to 60 min.</p>
+      <p class="card-hint timer-dialog-note">The timer waits for you: press <b>start</b> when the hunter is ready.</p>
+      <button type="button" class="pill-btn pill-btn-block" data-action="close-dialog">Cancel</button>
     </form>
   </dialog>
 

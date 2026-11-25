@@ -42,7 +42,10 @@ Chaque page a sa propre adresse, ce qui fait aussi fonctionner le bouton « reto
   - **House rules :** règle de victoire (score le plus haut ou le plus bas) et règle des mauvaises réponses (voir plus bas).
 - **The hunt**
   - **Current hunter :** le chasseur dont c'est le tour, avec ‹ › pour passer au précédent ou au suivant.
-  - **Chronomètre circulaire :** il affiche le temps restant du tour, avec boutons pour relancer, mettre en pause et couper le son. Sous le temps, la durée totale de la partie (« Hunt 12:34 »). Si le minuteur est désactivé, le cercle affiche cette durée totale.
+  - **Chronomètre circulaire :** il affiche le temps restant du tour. Sous le temps, on voit la durée totale de la partie (« Hunt 12:34 »). Si le minuteur est désactivé, le cercle affiche cette durée totale.
+    - **Le minuteur attend qu'on appuie sur ▶.** Au début de la partie et à chaque changement de chasseur, il est remis à sa durée complète et reste arrêté (« Press start »), et le bouton ▶ pulse. Le chronomètre total de la partie, lui, continue.
+    - ⏸ met en pause le minuteur et le chronomètre total ; ▶ reprend. ↺ remet le minuteur à sa durée complète, arrêté. Le dernier bouton coupe le son.
+    - **Changer la durée sans passer par Settings :** on touche le temps affiché (un crayon l'indique quand le minuteur ne tourne pas). Une fenêtre propose 30, 45, 50, 60, 75 s ou Off, ou un autre temps à taper (`90`, `1:30`…). La nouvelle durée remet le minuteur à zéro, arrêté. Choisir la durée déjà en place ne change rien. La durée est gardée pour les parties suivantes.
   - **Add points :** les 4 tuiles de primes, ainsi que **Bonus**, **Wrong**, **Custom** (n'importe quel nombre, positif ou négatif) et **Undo**.
   - **Hunters :** trois onglets, « Turn order » (scores dans l'ordre de passage), « Ranking » (classement en direct) et « Rounds » (points tour par tour). Toucher un chasseur lui donne des points hors de son tour.
   - **Next hunter :** sur téléphone, ce bouton reste toujours accessible en bas de l'écran.
@@ -213,7 +216,7 @@ Les limites du formulaire Feedback ne sont pas dans `localStorage`. Elles vivent
   - total = somme des saisies qui comptent. Avec `conditionalPenalties`, les mauvaises réponses (`c: "penalty"`) d'un chasseur ne comptent que s'il a aussi des points positifs avec le même `k`, et au plus à hauteur de ces points. Chaque mauvaise réponse est donc « comptée », « comptée en partie », « plafonnée » (au-delà des points gagnés), « en attente » (tour en cours) ou « annulée » (tour terminé sans trouver). Cet état est recalculé à chaque fois, rien n'est effacé ;
   - Undo = retirer la dernière saisie ;
   - onglet Rounds = saisies regroupées par tour.
-- **Les temps sont des horodatages**, pas des compteurs : `accMs` est le temps déjà cumulé et `since` le début de la période en cours (`null` = en pause). Le chronomètre reste donc juste après un rechargement ou une mise en veille du téléphone.
+- **Les temps sont des horodatages**, pas des compteurs : `accMs` est le temps déjà cumulé et `since` le début de la période en cours (`null` = arrêté). Le chronomètre reste donc juste après un rechargement ou une mise en veille du téléphone. Pour le minuteur de tour, `accMs: 0` avec `since: null` veut dire « prêt, en attente de Start ».
 
 ### Une partie de l'historique
 
