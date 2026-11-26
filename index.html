@@ -51,8 +51,6 @@
     <symbol id="i-keypad" viewBox="0 0 24 24"><circle cx="6" cy="6" r="1.5" fill="currentColor" stroke="none"/><circle cx="12" cy="6" r="1.5" fill="currentColor" stroke="none"/><circle cx="18" cy="6" r="1.5" fill="currentColor" stroke="none"/><circle cx="6" cy="12" r="1.5" fill="currentColor" stroke="none"/><circle cx="12" cy="12" r="1.5" fill="currentColor" stroke="none"/><circle cx="18" cy="12" r="1.5" fill="currentColor" stroke="none"/><circle cx="6" cy="18" r="1.5" fill="currentColor" stroke="none"/><circle cx="12" cy="18" r="1.5" fill="currentColor" stroke="none"/><circle cx="18" cy="18" r="1.5" fill="currentColor" stroke="none"/></symbol>
     <symbol id="i-edit" viewBox="0 0 24 24"><path d="M4 20h4L19.5 8.5a2.12 2.12 0 0 0-3-3L5 17v3z"/><path d="m14.5 7.5 3 3"/></symbol>
     <symbol id="i-trophy" viewBox="0 0 24 24"><path d="M8 21h8"/><path d="M12 17v4"/><path d="M7 4h10v6a5 5 0 0 1-10 0z"/><path d="M17 6h2.5A1.5 1.5 0 0 1 21 7.5V8a4 4 0 0 1-4 4"/><path d="M7 6H4.5A1.5 1.5 0 0 0 3 7.5V8a4 4 0 0 0 4 4"/></symbol>
-    <symbol id="i-message" viewBox="0 0 24 24"><path d="M21 11.5a8.5 8.5 0 0 1-12.3 7.6L3.5 20.5l1.4-4.6A8.5 8.5 0 1 1 21 11.5z"/><path d="M8.5 11.5h.01M12.5 11.5h.01M16.5 11.5h.01"/></symbol>
-    <symbol id="i-send" viewBox="0 0 24 24"><path d="M21.5 2.5 10.5 13.5"/><path d="m21.5 2.5-7 19-4-8-8-4z"/></symbol>
     <symbol id="i-saved" viewBox="0 0 24 24"><path d="M3 12a9 9 0 1 0 2.64-6.36L3 8.3"/><path d="M3 3v5.3h5.3"/><path d="M12 7v5l3.5 2"/></symbol>
   </svg>
 
@@ -103,9 +101,6 @@
       </a>
       <a class="nav-link" href="#/rules" data-route="rules" aria-label="Rules">
         <svg class="icon" aria-hidden="true"><use href="#i-book"></use></svg><span class="nav-label">Rules</span>
-      </a>
-      <a class="nav-link" href="#/feedback" data-route="feedback" aria-label="Feedback">
-        <svg class="icon" aria-hidden="true"><use href="#i-message"></use></svg><span class="nav-label">Feedback</span>
       </a>
     </nav>
   </header>
@@ -523,49 +518,6 @@
       <p class="rules-credits">A game made by Ines, Noé and Baptiste · MDS 2026</p>
     </section>
 
-    <!-- ===================================================================
-         FEEDBACK (sent by email through api/feedback.js + Resend)
-         =================================================================== -->
-    <section class="screen screen-feedback" data-screen="feedback" aria-labelledby="feedback-title" hidden>
-      <div class="screen-head">
-        <p class="kicker"><svg class="icon" aria-hidden="true"><use href="#i-sparkle"></use></svg>Tell us what you think<svg class="icon" aria-hidden="true"><use href="#i-sparkle"></use></svg></p>
-        <h1 class="title" id="feedback-title">Feedback</h1>
-        <svg class="title-swoosh" aria-hidden="true"><use href="#i-swoosh"></use></svg>
-      </div>
-
-      <form class="card feedback-card" id="feedback-form" novalidate>
-        <label class="field" for="feedback-team">
-          <span class="field-label">Team name <small>(optional)</small></span>
-          <input class="input" id="feedback-team" name="team" type="text" maxlength="60" autocomplete="off" enterkeyhint="next" placeholder="The Logo Rangers">
-        </label>
-        <label class="field" for="feedback-message">
-          <span class="field-label">Message</span>
-          <textarea class="input textarea" id="feedback-message" name="message" rows="7" maxlength="2000" required
-            placeholder="What did you like? What should we improve?" aria-describedby="feedback-error feedback-count"></textarea>
-        </label>
-        <div class="field-foot">
-          <p class="field-error" id="feedback-error" aria-live="polite"></p>
-          <span class="char-count" id="feedback-count">0 / 2000</span>
-        </div>
-        <!-- Spam trap: hidden from people, only bots fill it in -->
-        <div class="visually-hidden" aria-hidden="true">
-          <label>Website <input type="text" id="feedback-website" name="website" tabindex="-1" autocomplete="off"></label>
-        </div>
-        <p class="card-hint feedback-note">Your message is emailed to the Brand Hunters team. Please don’t include personal information.</p>
-        <p class="card-hint feedback-note feedback-limit" id="feedback-limit">Up to 2 messages per visit, at least 1 minute apart.</p>
-        <button type="submit" class="cta" id="feedback-submit" aria-describedby="feedback-limit">
-          <span id="feedback-submit-label">Send</span><svg class="icon" aria-hidden="true"><use href="#i-send"></use></svg>
-        </button>
-      </form>
-
-      <div class="card feedback-done" id="feedback-done" hidden>
-        <span class="feedback-done-icon"><svg class="icon" aria-hidden="true"><use href="#i-star"></use></svg></span>
-        <h2 class="feedback-done-title" id="feedback-done-title" tabindex="-1">Thank you!</h2>
-        <p id="feedback-done-text">Your message is on its way to the Brand Hunters team.</p>
-        <p class="card-hint" id="feedback-done-limit" hidden></p>
-        <button type="button" class="pill-btn pill-btn-sand" id="feedback-again" data-action="feedback-again"><svg class="icon" aria-hidden="true"><use href="#i-message"></use></svg><span>Send another message</span></button>
-      </div>
-    </section>
   </main>
 
   <!-- =====================================================================

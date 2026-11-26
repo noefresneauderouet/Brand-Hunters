@@ -2507,144 +2507,6 @@ button.tier:active {
 
 
 
-/* 11b. Feedback ============================================================= */
-
-.feedback-card {
-  display: flex;
-  flex-direction: column;
-  gap: 14px;
-}
-
-.field {
-  display: flex;
-  flex-direction: column;
-  gap: 8px;
-}
-
-.field-label {
-  font-size: 1.125rem;
-  font-weight: 600;
-}
-
-.field-label small {
-  color: var(--muted);
-  font-size: 0.85em;
-  font-weight: 500;
-}
-
-/* Light fields, like the hunters' names in the mockups */
-.feedback-card .input {
-  border-color: transparent;
-  background: var(--sand-light);
-  color: var(--plum);
-}
-
-.feedback-card .input::placeholder {
-  color: rgba(43, 21, 40, 0.5);
-}
-
-.feedback-card .input:focus {
-  border-color: var(--orange);
-  box-shadow: 0 0 0 4px rgba(241, 137, 48, 0.3);
-}
-
-.feedback-card .input[aria-invalid="true"] {
-  border-color: var(--red);
-}
-
-.textarea {
-  min-height: 170px;
-  resize: vertical;
-  font-weight: 500;
-  line-height: 1.5;
-}
-
-.field-foot {
-  display: flex;
-  align-items: flex-start;
-  gap: 12px;
-  margin-top: -6px;
-}
-
-.field-foot .field-error {
-  flex: 1;
-}
-
-.char-count {
-  margin-left: auto;
-  color: var(--muted);
-  font-size: 0.8125rem;
-  white-space: nowrap;
-  font-variant-numeric: tabular-nums;
-}
-
-.char-count.is-near {
-  color: var(--minus-text);
-  font-weight: 700;
-}
-
-.feedback-note {
-  text-align: center;
-}
-
-/* “Up to 2 messages per visit…”, right under the note */
-.feedback-limit {
-  margin-top: -10px;
-  color: var(--sand);
-  font-weight: 600;
-}
-
-.feedback-card .cta {
-  align-self: center;
-}
-
-.cta:disabled {
-  cursor: progress;
-  opacity: 0.65;
-  transform: none;
-}
-
-/* Waiting for the minute to pass, or no messages left */
-.cta.is-waiting:disabled {
-  cursor: not-allowed;
-  font-variant-numeric: tabular-nums;
-}
-
-.feedback-done {
-  display: flex;
-  flex-direction: column;
-  align-items: center;
-  gap: 10px;
-  padding: 28px 20px;
-  text-align: center;
-}
-
-.feedback-done-icon {
-  display: grid;
-  place-items: center;
-  width: 72px;
-  height: 72px;
-  border-radius: 50%;
-  background: linear-gradient(180deg, #FFC64F, var(--orange));
-  color: var(--plum);
-  box-shadow: 0 6px 18px rgba(241, 137, 48, 0.35);
-}
-
-.feedback-done-icon .icon {
-  width: 2.2em;
-  height: 2.2em;
-}
-
-.feedback-done-title {
-  font-size: 2rem;
-  font-style: italic;
-  font-weight: 900;
-  text-transform: uppercase;
-}
-
-.feedback-done-title:focus {
-  outline: none;
-}
 
 
 /* 12. Dialogs =============================================================== */
@@ -3126,10 +2988,9 @@ dialog {
     padding: 8px 0 0;
   }
 
-  /* Results, history, rules, feedback: centred */
+  /* Results, history, rules: centred */
   .screen-results,
-  .screen-rules,
-  .screen-feedback {
+  .screen-rules {
     width: min(100%, 720px);
     margin: 0 auto;
   }
