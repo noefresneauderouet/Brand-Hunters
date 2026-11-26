@@ -1021,7 +1021,7 @@ function renderPointsCard(g) {
 
   const missed = missedThisTurn(g);
   $('#points-mode').innerHTML = role === 'vulture'
-    ? '<b>Ambush!</b> Half of the card’s bounty. Wrong guess: no penalty.'
+    ? `<b>Ambush!</b> Half of the card’s bounty. Wrong guess: ${formatSigned(-b.penalty)}.`
     : role === 'witness'
       ? `<b>Witness share:</b> half of the bounty left${missed ? ` (after ${formatSigned(-missed)} of missed shots)` : ''}.`
       : '';
@@ -1038,9 +1038,9 @@ function renderPointsCard(g) {
   $('#bonus-btn').setAttribute('aria-label', `Bonus: add ${formatPoints(b.bonus)}`);
   const wrong = $('#wrong-btn');
   if (role === 'vulture') {
-    // A wrong ambush costs nothing: back to the Hunter
-    wrong.innerHTML = '<span>Wrong</span><b class="pill-value">No penalty</b>';
-    wrong.setAttribute('aria-label', 'Wrong ambush: no penalty, back to the Hunter');
+    // A wrong ambush costs the Vulture the Wrong value, then back to the Hunter
+    wrong.innerHTML = `<span>Wrong</span><b class="pill-value">${formatSigned(-b.penalty)}</b>`;
+    wrong.setAttribute('aria-label', `Wrong ambush: ${formatSigned(-b.penalty)} for ${g.players[g.target].name}, back to the Hunter`);
   } else {
     wrong.innerHTML = `<span>Wrong</span><b class="pill-value">${formatSigned(-b.penalty)}</b>`;
     wrong.setAttribute('aria-label', `Wrong answer: ${formatSigned(-b.penalty)}`);
@@ -1189,7 +1189,9 @@ function selectTarget(index) {
    the other players are Vultures. Rulebook:
      Witness: half of the bounty left (card bounty − missed shots this turn);
      Vulture: half of the card's original bounty after a successful ambush;
-     wrong ambush: no penalty.
+     wrong ambush: the Vulture loses the Wrong value (house rule). It is saved
+     as category "ambush", not "penalty": it always counts, it isn't a missed
+     shot of the Hunter (so it is never cancelled or capped).
    -------------------------------------------------------------------------- */
 
 const ROLE_LABELS = Object.freeze({ hunter: 'Hunter', witness: 'Witness', vulture: 'Vulture' });
@@ -1227,14 +1229,9 @@ function tileValue(g, key) {
   return full;
 }
 
-/** Wrong ambush: no penalty, the points go back to the Hunter. */
+/** Wrong ambush: the Vulture loses the Wrong value, then the points go back to the Hunter. */
 function missAmbush() {
-  const g = state.game;
-  const vulture = g.players[g.target];
-  g.target = g.current;
-  saveGame();
-  renderHunt();
-  showToast(`Missed ambush · no penalty for ${vulture.name}`);
+  addPoints(-state.bounties.penalty, 'ambush', { note: 'missed ambush', backToHunter: true });
 }
 
 function addBounty(key, pressedButton = null) {
