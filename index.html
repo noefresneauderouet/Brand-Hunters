@@ -27,6 +27,9 @@
     <symbol id="i-pause" viewBox="0 0 24 24"><rect x="6" y="4.5" width="4.2" height="15" rx="1.2" fill="currentColor" stroke="none"/><rect x="13.8" y="4.5" width="4.2" height="15" rx="1.2" fill="currentColor" stroke="none"/></symbol>
     <symbol id="i-chart" viewBox="0 0 24 24"><path d="M3.5 20.5h17"/><path d="M7 17v-5M12 17V6M17 17V9"/></symbol>
     <symbol id="i-book" viewBox="0 0 24 24"><path d="M12 6.5C10.5 5 8 4.5 3 4.5v14c5 0 7.5.5 9 2 1.5-1.5 4-2 9-2v-14c-5 0-7.5.5-9 2z"/><path d="M12 6.5v14"/></symbol>
+    <symbol id="i-cards" viewBox="0 0 24 24"><rect x="3" y="6.5" width="11" height="15" rx="2" transform="rotate(-10 8.5 14)"/><rect x="10" y="3" width="11" height="15" rx="2" transform="rotate(8 15.5 10.5)"/></symbol>
+    <symbol id="i-check" viewBox="0 0 24 24"><path stroke-width="3" d="m5 12.5 4.5 4.5L19 7.5"/></symbol>
+    <symbol id="i-cross" viewBox="0 0 24 24"><path stroke-width="3" d="m6.5 6.5 11 11m0-11-11 11"/></symbol>
     <symbol id="i-users" viewBox="0 0 24 24"><circle cx="9" cy="8" r="3.2"/><path d="M3 19c.6-3.2 3-5 6-5s5.4 1.8 6 5"/><circle cx="17" cy="9" r="2.6"/><path d="M16.5 14c2.4.1 4 1.6 4.5 4.5"/></symbol>
     <symbol id="i-hat" viewBox="0 0 24 24"><path d="M2.5 15c2.8 2.4 16.2 2.4 19 0"/><path d="M6.4 15.8c.2-3 .7-8 2.7-8.8 1.2-.5 1.9.6 2.9.6s1.7-1.1 2.9-.6c2 .8 2.5 5.8 2.7 8.8"/><path d="M6.9 12.4c3.2 1 7 1 10.2 0"/></symbol>
     <symbol id="i-stopwatch" viewBox="0 0 24 24"><circle cx="12" cy="13.5" r="7.5"/><path d="M12 13.5V9.5"/><path d="M9.5 2.5h5M12 2.5V6"/><path d="m18.5 6.5 1.5-1.5"/></symbol>
@@ -363,6 +366,149 @@
       <section class="card video-card" aria-label="Rules video">
         <div class="video-frame" id="rules-video"></div>
       </section>
+
+      <!-- Game rules, condensed from the printed rulebook -->
+      <section class="card rules-intro" aria-labelledby="rules-tagline">
+        <p class="rules-tagline" id="rules-tagline">Describe it. Draw it. Hunt it down!</p>
+        <p>The world’s most famous brands have escaped. Listen to the Witness, find the Fugitive and collect the bounty!</p>
+        <p class="card-hint">It’s a learning game too: the Witness practises describing in English, the Hunter practises listening, and everyone discovers the story behind each logo.</p>
+        <ul class="rules-facts">
+          <li><svg class="icon" aria-hidden="true"><use href="#i-users"></use></svg><span><b>2 to 4</b> players</span></li>
+          <li><svg class="icon" aria-hidden="true"><use href="#i-cards"></use></svg><span><b>54 cards</b> (50 Fugitives + 4 Jokers) and a score sheet (QR code on the box)</span></li>
+          <li><svg class="icon" aria-hidden="true"><use href="#i-edit"></use></svg><span><b>You need</b> paper, pencils and a timer</span></li>
+        </ul>
+      </section>
+
+      <article class="card rule-card" aria-labelledby="rule-1">
+        <h2 class="rule-title" id="rule-1"><span class="rule-num" aria-hidden="true">1</span>Goal</h2>
+        <p>Collect the highest total bounty by identifying brand logos.</p>
+      </article>
+
+      <article class="card rule-card" aria-labelledby="rule-2">
+        <h2 class="rule-title" id="rule-2"><span class="rule-num" aria-hidden="true">2</span>Roles</h2>
+        <ul class="rule-list">
+          <li><b class="rule-key">Hunter:</b> names the brand and can draw the logo.</li>
+          <li><b class="rule-key">Witness:</b> sees the card and describes the logo.</li>
+          <li><b class="rule-key">Vultures:</b> all the other players. They wait for a mistake to ambush the Hunter.</li>
+        </ul>
+      </article>
+
+      <article class="card rule-card" aria-labelledby="rule-3">
+        <h2 class="rule-title" id="rule-3"><span class="rule-num" aria-hidden="true">3</span>Setup</h2>
+        <ul class="rule-list">
+          <li>Sort the cards into 4 piles: <span class="inline-stars" role="img" aria-label="1 star"><svg class="icon" aria-hidden="true"><use href="#i-star"></use></svg></span>, <span class="inline-stars" role="img" aria-label="2 stars"><svg class="icon" aria-hidden="true"><use href="#i-star"></use></svg><svg class="icon" aria-hidden="true"><use href="#i-star"></use></svg></span>, <span class="inline-stars" role="img" aria-label="3 stars"><svg class="icon" aria-hidden="true"><use href="#i-star"></use></svg><svg class="icon" aria-hidden="true"><use href="#i-star"></use></svg><svg class="icon" aria-hidden="true"><use href="#i-star"></use></svg></span> and <span class="inline-stars" role="img" aria-label="5 stars"><svg class="icon" aria-hidden="true"><use href="#i-star"></use></svg><svg class="icon" aria-hidden="true"><use href="#i-star"></use></svg><svg class="icon" aria-hidden="true"><use href="#i-star"></use></svg><svg class="icon" aria-hidden="true"><use href="#i-star"></use></svg><svg class="icon" aria-hidden="true"><use href="#i-star"></use></svg></span>. Each pile has one Joker. Shuffle, face down.</li>
+          <li>Choose the number of rounds. In one round, every player is the Hunter once.</li>
+          <li>The youngest player is the first Hunter. The player on their left is the Witness.</li>
+        </ul>
+      </article>
+
+      <article class="card rule-card" aria-labelledby="rule-4">
+        <h2 class="rule-title" id="rule-4"><span class="rule-num" aria-hidden="true">4</span>Card levels</h2>
+        <ul class="level-grid">
+          <li class="tier level-tile tier-easy">
+            <span class="tier-stars" role="img" aria-label="1 star"><svg class="icon" aria-hidden="true"><use href="#i-star"></use></svg></span>
+            <span class="tier-label">Pickpocket</span>
+            <span class="tier-value">$100</span>
+            <span class="level-meta"><span class="level-time"><svg class="icon" aria-hidden="true"><use href="#i-stopwatch"></use></svg>45 s</span><span>3 forbidden words</span></span>
+          </li>
+          <li class="tier level-tile tier-medium">
+            <span class="tier-stars" role="img" aria-label="2 stars"><svg class="icon" aria-hidden="true"><use href="#i-star"></use></svg><svg class="icon" aria-hidden="true"><use href="#i-star"></use></svg></span>
+            <span class="tier-label">Bandit</span>
+            <span class="tier-value">$200</span>
+            <span class="level-meta"><span class="level-time"><svg class="icon" aria-hidden="true"><use href="#i-stopwatch"></use></svg>45 s</span><span>3 forbidden words</span></span>
+          </li>
+          <li class="tier level-tile tier-difficult">
+            <span class="tier-stars" role="img" aria-label="3 stars"><svg class="icon" aria-hidden="true"><use href="#i-star"></use></svg><svg class="icon" aria-hidden="true"><use href="#i-star"></use></svg><svg class="icon" aria-hidden="true"><use href="#i-star"></use></svg></span>
+            <span class="tier-label">Outlaw</span>
+            <span class="tier-value">$300</span>
+            <span class="level-meta"><span class="level-time"><svg class="icon" aria-hidden="true"><use href="#i-stopwatch"></use></svg>60 s</span><span>3 forbidden words</span></span>
+          </li>
+          <li class="tier level-tile tier-wanted">
+            <span class="tier-stars" role="img" aria-label="5 stars"><svg class="icon" aria-hidden="true"><use href="#i-star"></use></svg><svg class="icon" aria-hidden="true"><use href="#i-star"></use></svg><svg class="icon" aria-hidden="true"><use href="#i-star"></use></svg><svg class="icon" aria-hidden="true"><use href="#i-star"></use></svg><svg class="icon" aria-hidden="true"><use href="#i-star"></use></svg></span>
+            <span class="tier-label">Most Wanted</span>
+            <span class="tier-value">$500</span>
+            <span class="level-meta"><span class="level-time"><svg class="icon" aria-hidden="true"><use href="#i-stopwatch"></use></svg>75 s</span><span>no forbidden words</span></span>
+          </li>
+        </ul>
+        <p class="rule-callout">Missed shot: <b>−$50</b> at every level.</p>
+        <ul class="rule-list">
+          <li><b class="rule-key">Jokers unlock bonuses.</b> When the Witness draws one, they show it, keep it and draw another card from the same pile. Each Joker is used once, only when its owner is the Hunter. Follow the card.</li>
+        </ul>
+        <p class="rule-app"><svg class="icon" aria-hidden="true"><use href="#i-gamepad"></use></svg><span>In the app, tap the time on The Hunt to set 45, 60 or 75 s.</span></p>
+      </article>
+
+      <article class="card rule-card" aria-labelledby="rule-5">
+        <h2 class="rule-title" id="rule-5"><span class="rule-num" aria-hidden="true">5</span>Playing a turn</h2>
+        <ol class="rule-steps">
+          <li>The <b class="rule-key">Hunter</b> chooses a pile.</li>
+          <li>The <b class="rule-key">Witness</b> takes the top card, keeps it secret and starts the timer.</li>
+          <li>The <b class="rule-key">Witness</b> describes the logo in English.</li>
+          <li>The <b class="rule-key">Hunter</b> can draw the logo (it doesn’t need to be perfect) and must name the brand.</li>
+          <li>The turn ends when the brand is found, the bounty reaches $0, or time runs out.</li>
+          <li>The <b class="rule-key">Witness</b> shows the card and reads the logo’s story aloud.</li>
+          <li>The next player on the left becomes the Hunter.</li>
+        </ol>
+      </article>
+
+      <article class="card rule-card" aria-labelledby="rule-6">
+        <h2 class="rule-title" id="rule-6"><span class="rule-num" aria-hidden="true">6</span>The Witness’s rules</h2>
+        <div class="do-dont">
+          <div class="do">
+            <p class="do-title"><svg class="icon" aria-hidden="true"><use href="#i-check"></use></svg>Allowed</p>
+            <p>Shapes, colours, positions and other visual hints.</p>
+          </div>
+          <div class="dont">
+            <p class="do-title"><svg class="icon" aria-hidden="true"><use href="#i-cross"></use></svg>Not allowed</p>
+            <p>The brand name or any translation of it, its slogan, its products, forbidden words, gestures, or any language except English.</p>
+          </div>
+        </div>
+        <p class="rule-callout">Breaking a rule counts as a missed shot, but doesn’t allow an ambush.</p>
+      </article>
+
+      <article class="card rule-card" aria-labelledby="rule-7">
+        <h2 class="rule-title" id="rule-7"><span class="rule-num" aria-hidden="true">7</span>Missed shots &amp; Ambush!</h2>
+        <ul class="rule-list">
+          <li>Each wrong name is a <b class="rule-key">missed shot</b>: the bounty drops by $50. At $0, the turn ends.</li>
+          <li>A player’s score can never decrease.</li>
+          <li>After a wrong name, the timer pauses. The first <b class="rule-key">Vulture</b> to call <b class="rule-key">“Ambush!”</b> gets one guess:
+            <ul class="rule-sublist">
+              <li class="is-yes"><svg class="icon" aria-hidden="true"><use href="#i-check"></use></svg><span><b>Correct:</b> that Vulture wins half of the card’s original bounty, and the turn ends.</span></li>
+              <li class="is-no"><svg class="icon" aria-hidden="true"><use href="#i-cross"></use></svg><span><b>Wrong:</b> no penalty, but that Vulture can’t ambush again this turn. The timer resumes.</span></li>
+            </ul>
+          </li>
+          <li>If a wrong name brings the bounty to $0, an ambush is still allowed before the turn ends.</li>
+          <li>With 2 players, there are no Vultures, so no ambush.</li>
+        </ul>
+      </article>
+
+      <article class="card rule-card" aria-labelledby="rule-8">
+        <h2 class="rule-title" id="rule-8"><span class="rule-num" aria-hidden="true">8</span>Scoring</h2>
+        <ul class="rule-list">
+          <li><b class="rule-key">Hunter:</b> the bounty left after capturing the Fugitive.</li>
+          <li><b class="rule-key">Witness:</b> half of that bounty (nothing after an ambush).</li>
+          <li><b class="rule-key">Vulture:</b> half of the card’s original bounty after a successful ambush.</li>
+          <li><b class="rule-key">Quick capture:</b> +$50 for the Hunter who guesses right in under 15 seconds.</li>
+          <li><b class="rule-key">Collection:</b> whoever finds the logo keeps the card. At the end, every 3 cards from the same gang earn +$100.
+            <ul class="gang-list" aria-label="The five gangs"><li>Social &amp; Streaming</li><li>Tech &amp; Gaming</li><li>Sport &amp; Fashion</li><li>Cars</li><li>Food &amp; Business</li></ul>
+          </li>
+        </ul>
+        <p class="rule-app"><svg class="icon" aria-hidden="true"><use href="#i-gamepad"></use></svg><span>In the app: <b>Wrong</b> = missed shot, <b>Bonus</b> = quick capture. Tap a hunter in the list to pay the Witness or a Vulture, and use <b>Custom</b> for any other amount.</span></p>
+      </article>
+
+      <article class="card rule-card" aria-labelledby="rule-9">
+        <h2 class="rule-title" id="rule-9"><span class="rule-num" aria-hidden="true">9</span>Final round</h2>
+        <p>All bounties and bonuses earned in the final round are <b class="rule-key">doubled</b>, except collection bonuses.</p>
+      </article>
+
+      <article class="card rule-card" aria-labelledby="rule-10">
+        <h2 class="rule-title" id="rule-10"><span class="rule-num" aria-hidden="true">10</span>Winning</h2>
+        <ul class="rule-list">
+          <li>The highest total is the <b class="rule-key">“Best Hunter in Town”</b>.</li>
+          <li>Tie: the player with the most captured cards wins. Still tied: the tied players play another round.</li>
+        </ul>
+      </article>
+
+      <p class="rules-outro"><svg class="icon" aria-hidden="true"><use href="#i-star"></use></svg><span>Have fun, Brand Hunters!</span><svg class="icon" aria-hidden="true"><use href="#i-star"></use></svg></p>
     </section>
 
     <!-- ===================================================================

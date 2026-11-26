@@ -27,7 +27,7 @@ Chaque page a sa propre adresse, ce qui fait aussi fonctionner le bouton « reto
 | `#/hunt` | **The hunt** : la partie en cours (visible seulement s'il y en a une) |
 | `#/results` | Affiche **WANTED** du gagnant et classement final |
 | `#/history` | **History** : parties terminées |
-| `#/rules` | **Rules** : vidéo des règles |
+| `#/rules` | **Rules** : vidéo des règles, puis les règles du jeu en version courte |
 | `#/feedback` | **Feedback** : formulaire de retours, envoyé par e-mail |
 
 À l'ouverture du site, une partie en cours est reprise automatiquement. Sinon, la page New game s'affiche.
@@ -78,6 +78,14 @@ const RULES_VIDEO_URL = 'rules.mp4';                    // fichier vidéo placé
 ```
 
 Une vidéo YouTube est intégrée en mode « confidentialité renforcée » (`youtube-nocookie.com`).
+
+### Règles du jeu
+
+Sous la vidéo, la page Rules reprend toutes les règles du livret (*Brand Hunters Rules*), en plus court. On y trouve les 10 sections : Goal, Roles, Setup, Card levels, Playing a turn, The Witness’s rules, Missed shots & Ambush!, Scoring, Final round et Winning.
+- Les niveaux de cartes sont présentés avec les mêmes tuiles colorées que les boutons de primes.
+- Deux petites notes « In the app » expliquent comment faire avec l'appli : régler le temps, et noter les points du Witness ou d'un Vulture.
+
+Le texte est écrit directement dans `index.html` (section `RULES`). Pour modifier une règle, il suffit de changer le texte à cet endroit.
 
 ### Feedback : envoi par e-mail avec Resend
 

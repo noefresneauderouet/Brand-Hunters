@@ -2054,6 +2054,331 @@ button.tier:active {
   text-transform: uppercase;
 }
 
+/* Game rules (condensed rulebook) */
+.rules-intro {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+  text-align: center;
+}
+
+.rules-tagline {
+  text-wrap: balance;
+  color: var(--sand);
+  font-size: 1.375rem;
+  font-style: italic;
+  font-weight: 900;
+  line-height: 1.15;
+  text-transform: uppercase;
+}
+
+.rules-facts {
+  display: grid;
+  gap: 8px;
+  margin-top: 4px;
+  padding: 12px 14px;
+  border-radius: 16px;
+  background: rgba(18, 4, 14, 0.45);
+  text-align: left;
+}
+
+.rules-facts li {
+  display: flex;
+  align-items: flex-start;
+  gap: 10px;
+}
+
+.rules-facts .icon {
+  margin-top: 0.1em;
+  color: var(--orange);
+}
+
+.rules-facts b,
+.rule-key {
+  color: var(--sand);
+  font-weight: 700;
+}
+
+.rule-card {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+}
+
+.rule-title {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  color: var(--cream);
+  font-size: 1.25rem;
+  font-style: italic;
+  font-weight: 900;
+  line-height: 1.15;
+  text-transform: uppercase;
+}
+
+.rule-num {
+  display: grid;
+  place-items: center;
+  width: 34px;
+  height: 34px;
+  flex: none;
+  border-radius: 50%;
+  background: linear-gradient(180deg, #FFC64F, var(--orange));
+  color: var(--plum);
+  font-size: 1.0625rem;
+  font-style: normal;
+  box-shadow: 0 3px 8px rgba(241, 137, 48, 0.3);
+}
+
+.rule-list {
+  display: grid;
+  gap: 8px;
+}
+
+.rule-list > li {
+  position: relative;
+  padding-left: 18px;
+}
+
+.rule-list > li::before {
+  content: "";
+  position: absolute;
+  top: 0.6em;
+  left: 2px;
+  width: 7px;
+  height: 7px;
+  border-radius: 50%;
+  background: var(--orange);
+}
+
+.rule-sublist {
+  display: grid;
+  gap: 6px;
+  margin-top: 8px;
+}
+
+.rule-sublist li {
+  display: flex;
+  align-items: flex-start;
+  gap: 8px;
+  padding: 8px 10px;
+  border-radius: 12px;
+  background: rgba(18, 4, 14, 0.45);
+}
+
+.rule-sublist .icon {
+  margin-top: 0.1em;
+}
+
+.is-yes .icon,
+.is-yes b,
+.do .do-title {
+  color: var(--plus-text);
+}
+
+.is-no .icon,
+.is-no b,
+.dont .do-title {
+  color: var(--minus-text);
+}
+
+/* Numbered steps of a turn */
+.rule-steps {
+  display: grid;
+  gap: 8px;
+  counter-reset: step;
+}
+
+.rule-steps li {
+  position: relative;
+  min-height: 26px;
+  padding-left: 36px;
+  counter-increment: step;
+}
+
+.rule-steps li::before {
+  content: counter(step);
+  position: absolute;
+  top: -1px;
+  left: 0;
+  display: grid;
+  place-items: center;
+  width: 26px;
+  height: 26px;
+  border: 1.5px solid rgba(248, 199, 135, 0.6);
+  border-radius: 50%;
+  color: var(--sand);
+  font-size: 0.875rem;
+  font-weight: 700;
+}
+
+/* Stars inside a sentence (the four piles) */
+.inline-stars {
+  display: inline-flex;
+  gap: 1px;
+  color: var(--orange);
+  vertical-align: -0.1em;
+}
+
+.inline-stars .icon {
+  width: 0.9em;
+  height: 0.9em;
+}
+
+/* Card levels: the same coloured tiles as the bounty buttons */
+.level-grid {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 10px;
+}
+
+.level-tile {
+  min-height: 0;
+  padding: 10px 6px 12px;
+}
+
+.level-tile .tier-value {
+  font-size: 1.875rem;
+}
+
+.level-meta {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 2px;
+  margin-top: 4px;
+  font-size: 0.8125rem;
+  font-weight: 600;
+  line-height: 1.25;
+}
+
+.level-time {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  font-size: 0.9375rem;
+  font-weight: 700;
+}
+
+.level-meta .icon {
+  width: 1.05em;
+  height: 1.05em;
+}
+
+.rule-callout {
+  padding: 10px 12px;
+  border-left: 4px solid var(--orange);
+  border-radius: 4px 12px 12px 4px;
+  background: rgba(241, 137, 48, 0.12);
+}
+
+.rule-callout b {
+  color: var(--minus-text);
+}
+
+/* Allowed / not allowed */
+.do-dont {
+  display: grid;
+  gap: 10px;
+}
+
+.do,
+.dont {
+  padding: 12px 14px;
+  border: 1.5px solid;
+  border-radius: 16px;
+}
+
+.do {
+  border-color: rgba(169, 212, 110, 0.45);
+  background: rgba(95, 145, 48, 0.14);
+}
+
+.dont {
+  border-color: rgba(255, 138, 117, 0.45);
+  background: rgba(209, 75, 53, 0.14);
+}
+
+.do-title {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  margin-bottom: 4px;
+  font-weight: 800;
+  text-transform: uppercase;
+  letter-spacing: 0.06em;
+}
+
+.gang-list {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+  margin-top: 8px;
+}
+
+.gang-list li {
+  padding: 4px 12px;
+  border: 1.5px solid rgba(248, 199, 135, 0.45);
+  border-radius: 999px;
+  color: var(--sand);
+  font-size: 0.875rem;
+  font-weight: 600;
+}
+
+/* How to do it in this app */
+.rule-app {
+  display: flex;
+  align-items: flex-start;
+  gap: 8px;
+  color: var(--muted);
+  font-size: 0.875rem;
+}
+
+.rule-app .icon {
+  margin-top: 0.05em;
+  color: var(--orange);
+}
+
+.rule-app b {
+  color: var(--cream);
+}
+
+.rules-outro {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 10px;
+  padding: 16px;
+  border: 1.5px solid var(--red);
+  border-radius: var(--radius-card);
+  background: var(--plum-deep);
+  color: var(--sand);
+  font-size: 1.25rem;
+  font-style: italic;
+  font-weight: 900;
+  text-align: center;
+  text-transform: uppercase;
+}
+
+.rules-outro .icon {
+  color: var(--orange);
+}
+
+.rules-outro span {
+  text-wrap: balance;
+}
+
+@media (min-width: 600px) {
+  .level-grid {
+    grid-template-columns: repeat(4, minmax(0, 1fr));
+  }
+
+  .do-dont {
+    grid-template-columns: 1fr 1.6fr;
+  }
+}
+
 
 
 /* 11b. Feedback ============================================================= */
