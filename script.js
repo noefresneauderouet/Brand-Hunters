@@ -65,8 +65,8 @@ const HISTORY_LIMIT = 200;
 /** If the timer ran out long ago (page closed), only the visual signal is shown. */
 const ALARM_GRACE_MS = 5000;
 const ALARM_VIBRATION = [300, 120, 300, 120, 600];
-/** [start (s), duration (s), frequency (Hz)] */
-const ALARM_BEEPS = [[0, 0.16, 880], [0.24, 0.16, 880], [0.48, 0.16, 880], [0.8, 0.55, 1175]];
+/** Last seconds of the round timer that get a “click” (the revolver is cocked). */
+const COUNTDOWN_TICKS = 3;
 
 /** The four bounty tiers of the game cards. */
 const BOUNTY_TIERS = Object.freeze([
@@ -1495,6 +1495,7 @@ function tick() {
 
   const elapsed = turnElapsed(g, now);
   const remaining = Math.max(0, timer.durationMs - elapsed);
+  countdownSound(g, remaining);
   if (remaining === 0 && !timer.expired) {
     timer.expired = true;
     saveGame();
@@ -1533,10 +1534,24 @@ function syncRuntime() {
 
 /* --- Alarm: visual signal + sound (Web Audio) + vibration ---------------- */
 
+let lastCountdownTick = null; // second (3, 2, 1) already clicked
+
+/** A revolver click at 3, 2 and 1 seconds from the end. */
+function countdownSound(g, remaining) {
+  const seconds = Math.ceil(remaining / 1000);
+  if (turnState(g) !== 'running' || seconds > COUNTDOWN_TICKS || seconds < 1) {
+    if (seconds > COUNTDOWN_TICKS) lastCountdownTick = null;
+    return;
+  }
+  if (lastCountdownTick === seconds) return;
+  lastCountdownTick = seconds;
+  if (state.prefs.sound) playSound((ctx, out, t0) => soundClick(ctx, out, t0, seconds === 1));
+}
+
 function triggerAlarm(silent) {
   if (silent) return; // ran out while the page was closed: visual signal only
   flashScreen();
-  if (state.prefs.sound) playBeeps(ALARM_BEEPS);
+  if (state.prefs.sound) playSound(soundTimeUp);
   if ('vibrate' in navigator) {
     try { navigator.vibrate(ALARM_VIBRATION); } catch { /* not supported */ }
   }
@@ -1577,31 +1592,162 @@ function primeAudio() {
   } catch { /* ignored */ }
 }
 
-function playBeeps(pattern) {
+/* --- Western sounds, made with Web Audio (no sound files) -----------------
+   Each sound is a function (ctx, out, t0): it plays on any AudioContext,
+   including an OfflineAudioContext (to record or test it).
+   -------------------------------------------------------------------------- */
+
+/** Connects nodes one after the other (older Safari: connect() returns nothing). */
+function chain(...nodes) {
+  for (let i = 0; i < nodes.length - 1; i++) nodes[i].connect(nodes[i + 1]);
+}
+
+const soundOutputs = new WeakMap();
+const noiseBuffers = new WeakMap();
+
+/** Master output: a compressor makes the sounds punchy without clipping. */
+function soundOutput(ctx) {
+  if (!soundOutputs.has(ctx)) {
+    const compressor = ctx.createDynamicsCompressor();
+    compressor.threshold.value = -16;
+    compressor.knee.value = 8;
+    compressor.ratio.value = 6;
+    compressor.attack.value = 0.002;
+    compressor.release.value = 0.2;
+    const volume = ctx.createGain();
+    volume.gain.value = 0.9;
+    chain(compressor, volume, ctx.destination);
+    soundOutputs.set(ctx, compressor);
+  }
+  return soundOutputs.get(ctx);
+}
+
+/** 2 seconds of white noise, made once per context. */
+function noiseSource(ctx) {
+  if (!noiseBuffers.has(ctx)) {
+    const buffer = ctx.createBuffer(1, ctx.sampleRate * 2, ctx.sampleRate);
+    const data = buffer.getChannelData(0);
+    for (let i = 0; i < data.length; i++) data[i] = Math.random() * 2 - 1;
+    noiseBuffers.set(ctx, buffer);
+  }
+  const source = ctx.createBufferSource();
+  source.buffer = noiseBuffers.get(ctx);
+  return source;
+}
+
+/** Envelope: silence → peak in `attack` s → silence after `decay` s more. */
+function envelope(param, t0, peak, attack, decay) {
+  param.setValueAtTime(0.0001, t0);
+  param.exponentialRampToValueAtTime(peak, t0 + attack);
+  param.exponentialRampToValueAtTime(0.0001, t0 + attack + decay);
+}
+
+/** Revolver hammer being cocked: a dry metal click on a small wooden body. */
+function soundClick(ctx, out, t0, accent = false) {
+  const noise = noiseSource(ctx);
+  const band = ctx.createBiquadFilter();
+  band.type = 'bandpass';
+  band.frequency.value = accent ? 3600 : 2800;
+  band.Q.value = 2.2;
+  const clickGain = ctx.createGain();
+  envelope(clickGain.gain, t0, accent ? 1 : 0.8, 0.001, 0.04);
+  chain(noise, band, clickGain, out);
+  noise.start(t0, Math.random());
+  noise.stop(t0 + 0.06);
+
+  const body = ctx.createOscillator();
+  body.type = 'triangle';
+  body.frequency.setValueAtTime(accent ? 1500 : 1100, t0);
+  body.frequency.exponentialRampToValueAtTime(accent ? 1000 : 750, t0 + 0.08);
+  const bodyGain = ctx.createGain();
+  envelope(bodyGain.gain, t0, accent ? 0.55 : 0.4, 0.002, 0.09);
+  chain(body, bodyGain, out);
+  body.start(t0);
+  body.stop(t0 + 0.12);
+}
+
+/** Time's up: a revolver shot echoing in the canyon, then a ricochet. */
+function soundTimeUp(ctx, out, t0) {
+  // Canyon echo: a delay that repeats the shot, softer and duller each time
+  const echo = ctx.createDelay(1);
+  echo.delayTime.value = 0.34;
+  const echoTone = ctx.createBiquadFilter();
+  echoTone.type = 'lowpass';
+  echoTone.frequency.value = 1400;
+  const feedback = ctx.createGain();
+  feedback.gain.value = 0.32;
+  const echoSend = ctx.createGain();
+  echoSend.gain.value = 0.45;
+  chain(echoSend, echo, echoTone, feedback, echo);
+  echoTone.connect(out);
+
+  // Crack: a burst of noise, bright then dull
+  const crack = noiseSource(ctx);
+  const tone = ctx.createBiquadFilter();
+  tone.type = 'lowpass';
+  tone.frequency.setValueAtTime(8000, t0);
+  tone.frequency.exponentialRampToValueAtTime(500, t0 + 0.45);
+  const crackGain = ctx.createGain();
+  crackGain.gain.setValueAtTime(0.0001, t0);
+  crackGain.gain.exponentialRampToValueAtTime(1, t0 + 0.003);
+  crackGain.gain.exponentialRampToValueAtTime(0.22, t0 + 0.09);
+  crackGain.gain.exponentialRampToValueAtTime(0.0001, t0 + 0.8);
+  chain(crack, tone, crackGain);
+  crackGain.connect(out);
+  crackGain.connect(echoSend);
+  crack.start(t0, Math.random());
+  crack.stop(t0 + 0.85);
+
+  // Boom: the low thump of the shot
+  const boom = ctx.createOscillator();
+  boom.type = 'sine';
+  boom.frequency.setValueAtTime(170, t0);
+  boom.frequency.exponentialRampToValueAtTime(45, t0 + 0.28);
+  const boomGain = ctx.createGain();
+  envelope(boomGain.gain, t0, 0.9, 0.004, 0.32);
+  boom.connect(boomGain);
+  boomGain.connect(out);
+  boomGain.connect(echoSend);
+  boom.start(t0);
+  boom.stop(t0 + 0.4);
+
+  // Ricochet: a whistle that falls, with a little wobble (“piiiooou”)
+  const r0 = t0 + 0.14;
+  const whistle = ctx.createOscillator();
+  whistle.type = 'sine';
+  whistle.frequency.setValueAtTime(2700, r0);
+  whistle.frequency.exponentialRampToValueAtTime(620, r0 + 0.62);
+  const wobble = ctx.createOscillator();
+  wobble.frequency.value = 26;
+  const wobbleDepth = ctx.createGain();
+  wobbleDepth.gain.value = 55;
+  chain(wobble, wobbleDepth, whistle.frequency);
+  const whistleGain = ctx.createGain();
+  whistleGain.gain.setValueAtTime(0.0001, r0);
+  whistleGain.gain.exponentialRampToValueAtTime(0.3, r0 + 0.03);
+  whistleGain.gain.setValueAtTime(0.3, r0 + 0.25);
+  whistleGain.gain.exponentialRampToValueAtTime(0.0001, r0 + 0.68);
+  chain(whistle, whistleGain, out);
+  whistleGain.connect(echoSend);
+  whistle.start(r0);
+  wobble.start(r0);
+  whistle.stop(r0 + 0.7);
+  wobble.stop(r0 + 0.7);
+}
+
+/** Plays a sound on the page's AudioContext. */
+function playSound(sound) {
   const ctx = getAudioContext();
   if (!ctx) return;
-  const start = ctx.currentTime + 0.05;
-  pattern.forEach(([offset, duration, frequency]) => {
-    const oscillator = ctx.createOscillator();
-    const gain = ctx.createGain();
-    const t0 = start + offset;
-    oscillator.type = 'square';
-    oscillator.frequency.value = frequency;
-    gain.gain.setValueAtTime(0.0001, t0);
-    gain.gain.exponentialRampToValueAtTime(0.25, t0 + 0.015);
-    gain.gain.setValueAtTime(0.25, t0 + duration - 0.03);
-    gain.gain.exponentialRampToValueAtTime(0.0001, t0 + duration);
-    oscillator.connect(gain);
-    gain.connect(ctx.destination);
-    oscillator.start(t0);
-    oscillator.stop(t0 + duration + 0.02);
-  });
+  try {
+    sound(ctx, soundOutput(ctx), ctx.currentTime + 0.03);
+  } catch { /* old browser: no sound */ }
 }
 
 function setSoundPref(enabled) {
   state.prefs.sound = enabled;
   savePrefs();
-  if (enabled) playBeeps([[0, 0.12, 880]]); // short test beep
+  if (enabled) playSound((ctx, out, t0) => soundClick(ctx, out, t0, true)); // short test click
   renderTimerControls();
 }
 

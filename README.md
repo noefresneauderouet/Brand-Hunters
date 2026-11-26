@@ -54,7 +54,8 @@ Chaque page a sa propre adresse, ce qui fait aussi fonctionner le bouton « reto
   - **Next hunter :** sur téléphone, ce bouton reste toujours accessible en bas de l'écran.
   - **Settings :** changer le minuteur, les règles, le son et les primes, ou abandonner la partie.
   - **End game :** affiche le classement final et enregistre la partie dans l'historique.
-- **Fin du minuteur :** signal visuel, son et vibration (si le téléphone le permet). L'écran reste allumé pendant la partie (Wake Lock API).
+- **Sons du minuteur (style western) :** un « clic » de revolver qu'on arme à 3, 2 et 1 seconde de la fin (le dernier un peu plus aigu), puis, à 0, un coup de feu avec un ricochet et un écho de canyon. Les sons sont fabriqués par le navigateur (Web Audio API) : il n'y a aucun fichier audio. Le bouton haut-parleur sous le minuteur les coupe ; en le réactivant, on entend un clic de test.
+- **Fin du minuteur :** en plus du son, l'écran clignote et le téléphone vibre (si possible). L'écran reste allumé pendant la partie (Wake Lock API).
 - **Sauvegarde :** automatique à chaque action ; on retrouve la partie après une fermeture ou un rechargement.
 - **History :** parties terminées. Chacune peut être supprimée ou rejouée (« Play again » pré-remplit New game avec les mêmes chasseurs et réglages).
 
