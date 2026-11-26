@@ -1004,23 +1004,57 @@ function renderCurrentHunter(g, scores) {
   }
   let html = notes.map(escapeHtml).join('');
   if (g.target !== g.current) {
-    html += `${html ? '<br>' : ''}Points go to ${starIcon(target.color, 'icon-inline')} <strong>${escapeHtml(target.name)}</strong> · <button type="button" class="link-btn" data-action="reset-target">back to ${escapeHtml(current.name)}</button>`;
+    const what = roleOf(g, g.target) === 'vulture' ? 'Ambush by' : 'Witness share for';
+    html += `${html ? '<br>' : ''}${what} ${starIcon(target.color, 'icon-inline')} <strong>${escapeHtml(target.name)}</strong> · <button type="button" class="link-btn" data-action="reset-target">back to ${escapeHtml(current.name)}</button>`;
   }
   $('#current-note').innerHTML = html;
 }
 
 function renderPointsCard(g) {
   const b = state.bounties;
-  const target = g.players[g.target];
-  $('#points-target').innerHTML = `Points for ${starIcon(target.color)} <strong>${escapeHtml(target.name)}</strong>${g.target !== g.current ? ' (off turn)' : ''}`;
-  $('#bounty-grid').innerHTML = BOUNTY_TIERS.map((t, i) => `
-    <button type="button" class="tier tier-${t.key}" data-action="add-bounty" data-key="${t.key}" aria-label="${t.label}: add ${formatPoints(b[t.key])}">
-      ${starsHtml(t.stars)}<span class="tier-label">${t.label}</span><span class="tier-value">${formatSigned(b[t.key])}</span>
-    </button>`).join('');
+  const role = roleOf(g, g.target);
+  const card = $('.points-card');
+  card.classList.toggle('is-ambush', role === 'vulture');
+  card.classList.toggle('is-witness', role === 'witness');
+
+  // Who scores: one chip per player, with their role this turn
+  $('#points-targets').innerHTML = g.players.map((p, i) => {
+    const r = roleOf(g, i);
+    const selected = i === g.target;
+    return `
+      <button type="button" class="target-chip role-chip${selected ? ' is-selected' : ''}" data-action="select-player" data-index="${i}" aria-pressed="${selected}">
+        ${starIcon(p.color)}<span>${escapeHtml(p.name)}</span><small class="role-tag role-${r}">${ROLE_LABELS[r]}</small>
+      </button>`;
+  }).join('');
+  keepChipInView($('#points-targets'), $('#points-targets .is-selected'));
+
+  const missed = missedThisTurn(g);
+  $('#points-mode').innerHTML = role === 'vulture'
+    ? '<b>Ambush!</b> Half of the card’s bounty. Wrong guess: no penalty.'
+    : role === 'witness'
+      ? `<b>Witness share:</b> half of the bounty left${missed ? ` (after ${formatSigned(-missed)} of missed shots)` : ''}.`
+      : '';
+
+  const share = { vulture: ' (ambush: half of the bounty)', witness: ' (Witness share: half of the bounty left)', hunter: '' }[role];
+  $('#bounty-grid').innerHTML = BOUNTY_TIERS.map((t) => {
+    const value = tileValue(g, t.key);
+    return `
+    <button type="button" class="tier tier-${t.key}" data-action="add-bounty" data-key="${t.key}" aria-label="${t.label}: add ${formatPoints(value)}${share}"${value > 0 ? '' : ' disabled'}>
+      ${starsHtml(t.stars)}<span class="tier-label">${t.label}</span><span class="tier-value">${formatSigned(value)}</span>
+    </button>`;
+  }).join('');
   $('#bonus-btn').innerHTML = `<span>Bonus</span><b class="pill-value">${formatSigned(b.bonus)}</b>`;
   $('#bonus-btn').setAttribute('aria-label', `Bonus: add ${formatPoints(b.bonus)}`);
-  $('#wrong-btn').innerHTML = `<span>Wrong</span><b class="pill-value">${formatSigned(-b.penalty)}</b>`;
-  $('#wrong-btn').setAttribute('aria-label', `Wrong answer: ${formatSigned(-b.penalty)}`);
+  const wrong = $('#wrong-btn');
+  if (role === 'vulture') {
+    // A wrong ambush costs nothing: back to the Hunter
+    wrong.innerHTML = '<span>Wrong</span><b class="pill-value">No penalty</b>';
+    wrong.setAttribute('aria-label', 'Wrong ambush: no penalty, back to the Hunter');
+  } else {
+    wrong.innerHTML = `<span>Wrong</span><b class="pill-value">${formatSigned(-b.penalty)}</b>`;
+    wrong.setAttribute('aria-label', `Wrong answer: ${formatSigned(-b.penalty)}`);
+  }
+  wrong.disabled = role === 'witness'; // missed shots belong to the Hunter
   $('#undo-btn').disabled = g.entries.length === 0;
 }
 
@@ -1159,7 +1193,74 @@ function selectTarget(index) {
 }
 
 
+/* --- Roles: Witness share and Ambush --------------------------------------
+   The Witness sits on the Hunter's left: the next hunter in turn order. All
+   the other players are Vultures. Rulebook:
+     Witness: half of the bounty left (card bounty − missed shots this turn);
+     Vulture: half of the card's original bounty after a successful ambush;
+     wrong ambush: no penalty.
+   -------------------------------------------------------------------------- */
+
+const ROLE_LABELS = Object.freeze({ hunter: 'Hunter', witness: 'Witness', vulture: 'Vulture' });
+
+function roleOf(g, index) {
+  if (index === g.current) return 'hunter';
+  if (index === (g.current + 1) % g.players.length) return 'witness';
+  return 'vulture';
+}
+
+/** Missed shots of the Hunter during this turn (positive amount). */
+function missedThisTurn(g) {
+  const k = turnIndex(g);
+  const hunterId = g.players[g.current].id;
+  return roundScore(g.entries
+    .filter((e) => e.k === k && e.p === hunterId && isWrongAnswer(e))
+    .reduce((sum, e) => sum - e.v, 0));
+}
+
+/** Scrolls a row of chips sideways (never the page) so the chosen one is visible. */
+function keepChipInView(row, chip) {
+  if (!row || !chip || row.scrollWidth <= row.clientWidth) return;
+  const rowBox = row.getBoundingClientRect();
+  const box = chip.getBoundingClientRect();
+  if (box.left < rowBox.left + 16) row.scrollLeft -= rowBox.left + 16 - box.left;
+  else if (box.right > rowBox.right - 16) row.scrollLeft += box.right - (rowBox.right - 16);
+}
+
+/** What a bounty tile gives to the selected player. */
+function tileValue(g, key) {
+  const full = state.bounties[key];
+  const role = roleOf(g, g.target);
+  if (role === 'vulture') return roundScore(full / 2);
+  if (role === 'witness') return roundScore(Math.max(0, full - missedThisTurn(g)) / 2);
+  return full;
+}
+
+/** Wrong ambush: no penalty, the points go back to the Hunter. */
+function missAmbush() {
+  const g = state.game;
+  const vulture = g.players[g.target];
+  g.target = g.current;
+  saveGame();
+  renderHunt();
+  showToast(`Missed ambush · no penalty for ${vulture.name}`);
+}
+
 function addBounty(key, pressedButton = null) {
+  const g = state.game;
+  if (!g) return;
+  const role = roleOf(g, g.target);
+  const isTier = BOUNTY_TIERS.some((t) => t.key === key);
+  if (key === 'penalty' && role !== 'hunter') {
+    if (role === 'vulture') missAmbush();
+    return;
+  }
+  if (isTier && role !== 'hunter') {
+    // Ambush or Witness share: half, then the points go back to the Hunter
+    const note = role === 'vulture' ? `Ambush! · half of ${BOUNTY_LABELS[key]}` : `Witness share · ${BOUNTY_LABELS[key]}`;
+    addPoints(tileValue(g, key), key, { note, backToHunter: true });
+    return;
+  }
   const value = key === 'penalty' ? -state.bounties.penalty : state.bounties[key];
   addPoints(value, key);
   const button = pressedButton || (BOUNTY_TIERS.some((t) => t.key === key)
@@ -1172,7 +1273,7 @@ function addBounty(key, pressedButton = null) {
   }
 }
 
-function addPoints(value, category = 'custom') {
+function addPoints(value, category = 'custom', { note = '', backToHunter = false } = {}) {
   const g = state.game;
   if (!g || !Number.isFinite(value) || value === 0) return;
   const player = g.players[g.target];
@@ -1181,6 +1282,7 @@ function addPoints(value, category = 'custom') {
   // k = turn of the entry (used by the wrong-answer rule)
   g.entries.push({ p: player.id, v: points, r: g.round, k: turnIndex(g), c: category, t: Date.now() });
   const after = computeScores(g);
+  if (backToHunter) g.target = g.current;
   saveGame();
   renderHunt();
 
@@ -1191,7 +1293,9 @@ function addPoints(value, category = 'custom') {
 
   const head = `${formatSigned(points)} for ${player.name}`;
   const label = BOUNTY_TIERS.some((t) => t.key === category) ? ` · ${BOUNTY_LABELS[category]}` : '';
-  if (status === 'pending') {
+  if (note) {
+    showToast(`${head} · ${note}`, 2400);
+  } else if (status === 'pending') {
     showToast(`${head} · pending`);
   } else if (status === 'capped') {
     showToast(`${head} · not counted (can’t lose more than the points won)`, 2800);

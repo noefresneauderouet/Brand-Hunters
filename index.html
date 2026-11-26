@@ -255,7 +255,8 @@
 
       <section class="card points-card" aria-labelledby="points-title">
         <p class="kicker kicker-small card-kicker" id="points-title"><svg class="icon" aria-hidden="true"><use href="#i-sparkle"></use></svg>Add points<svg class="icon" aria-hidden="true"><use href="#i-sparkle"></use></svg></p>
-        <p class="points-target" id="points-target"></p>
+        <div class="target-chips points-targets" id="points-targets" role="group" aria-label="Who gets the points"></div>
+        <p class="points-mode" id="points-mode" aria-live="polite"></p>
         <div class="bounty-grid" id="bounty-grid"></div>
         <div class="pill-grid">
           <button type="button" class="pill-btn pill-btn-bonus" data-action="add-bounty" data-key="bonus" id="bonus-btn"></button>
@@ -278,7 +279,7 @@
         </div>
         <div class="tab-panel" id="panel-order" role="tabpanel" aria-labelledby="tab-order">
           <ol class="hunter-list" id="hunter-list"></ol>
-          <p class="card-hint">Tap a hunter to give them points outside their turn.</p>
+          <p class="card-hint">Tap a hunter to choose who gets the points. The Witness and the Vultures get half.</p>
         </div>
         <div class="tab-panel" id="panel-ranking" role="tabpanel" aria-labelledby="tab-ranking" hidden>
           <p class="card-hint" id="ranking-rule"></p>
@@ -488,6 +489,7 @@
           <li>If a wrong name brings the bounty to $0, an ambush is still allowed before the turn ends.</li>
           <li>With 2 players, there are no Vultures, so no ambush.</li>
         </ul>
+        <p class="rule-app"><svg class="icon" aria-hidden="true"><use href="#i-gamepad"></use></svg><span>In the app, pick the <b>Vulture</b> above the bounty tiles: the tiles switch to half (Bandit +200 → +100). Tap the card’s level if the ambush is right, or <b>Wrong</b> (no penalty) if not.</span></p>
       </article>
 
       <article class="card rule-card" aria-labelledby="rule-9">
@@ -501,7 +503,7 @@
             <ul class="gang-list" aria-label="The six gangs"><li>Social &amp; Streaming</li><li>Tech &amp; Gaming</li><li>Sport &amp; Fashion</li><li>Cars</li><li>Food &amp; Business</li><li>Creator</li></ul>
           </li>
         </ul>
-        <p class="rule-app"><svg class="icon" aria-hidden="true"><use href="#i-gamepad"></use></svg><span>In the app: <b>Wrong</b> = missed shot, <b>Bonus</b> = quick capture. Tap a hunter in the list to pay the Witness or a Vulture, and use <b>Custom</b> for any other amount.</span></p>
+        <p class="rule-app"><svg class="icon" aria-hidden="true"><use href="#i-gamepad"></use></svg><span>In the app: <b>Wrong</b> = missed shot, <b>Bonus</b> = quick capture. Pick the <b>Witness</b> above the bounty tiles: the tiles show their share (half of the bounty left). Use <b>Custom</b> for any other amount.</span></p>
       </article>
 
       <article class="card rule-card" aria-labelledby="rule-10">

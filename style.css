@@ -1445,22 +1445,102 @@ button.tier:active {
   padding-top: 14px;
 }
 
-.points-target {
-  margin: -4px 0 12px;
+/* Who gets the points: the players with their role this turn */
+.points-targets {
+  margin-top: -4px;
+  margin-bottom: 6px;
+}
+
+.points-targets:has(.role-chip:only-child) {
+  justify-content: center;
+}
+
+/* Star on the left, name above the role */
+.target-chip.role-chip {
+  display: inline-grid;
+  grid-template-columns: auto auto;
+  align-content: center;
+  justify-items: start;
+  column-gap: 7px;
+  min-height: 48px;
+  padding: 4px 14px 4px 11px;
+  border-radius: 14px;
+  line-height: 1.15;
+}
+
+.target-chip.role-chip .icon {
+  grid-row: 1 / span 2;
+  align-self: center;
+}
+
+.role-tag {
   color: var(--muted);
+  font-size: 0.6875rem;
+  font-weight: 700;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+}
+
+.role-chip.is-selected .role-tag.role-hunter {
+  color: var(--sand);
+}
+
+.role-tag.role-witness {
+  color: #FFD27A;
+}
+
+.role-tag.role-vulture {
+  color: var(--minus-text);
+}
+
+.target-chip.role-chip.is-selected:has(.role-vulture) {
+  border-color: var(--minus-text);
+  background: rgba(209, 75, 53, 0.22);
+}
+
+.target-chip.role-chip.is-selected:has(.role-witness) {
+  border-color: #FFD27A;
+  background: rgba(251, 181, 64, 0.16);
+}
+
+/* Explains the half shares (Witness, Ambush) */
+.points-mode {
+  margin-bottom: 10px;
+  padding: 8px 12px;
+  border-radius: 12px;
   font-size: 0.875rem;
   text-align: center;
 }
 
-.points-target strong {
-  color: var(--cream);
+.points-mode:empty {
+  display: none;
 }
 
-.points-target .icon {
-  width: 1em;
-  height: 1em;
-  color: var(--c, var(--sand));
-  vertical-align: -0.12em;
+.points-card.is-ambush .points-mode {
+  border: 1.5px solid rgba(255, 138, 117, 0.5);
+  background: rgba(209, 75, 53, 0.18);
+}
+
+.points-card.is-ambush .points-mode b {
+  color: var(--minus-text);
+}
+
+.points-card.is-witness .points-mode {
+  border: 1.5px solid rgba(255, 210, 122, 0.45);
+  background: rgba(251, 181, 64, 0.12);
+}
+
+.points-card.is-witness .points-mode b {
+  color: #FFD27A;
+}
+
+.points-card.is-ambush {
+  border-color: rgba(255, 138, 117, 0.7);
+}
+
+.tier:disabled {
+  opacity: 0.4;
+  filter: grayscale(0.5);
 }
 
 .pill-grid {
@@ -3110,6 +3190,15 @@ dialog {
   .timer-edit-icon {
     right: -2px;
     bottom: 2px;
+  }
+
+  /* Room enough on a computer: the players wrap instead of scrolling */
+  .points-targets {
+    flex-wrap: wrap;
+    justify-content: center;
+    margin: -4px 0 6px;
+    padding: 2px 0 4px;
+    overflow: visible;
   }
 
   .tier {
