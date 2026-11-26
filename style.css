@@ -2102,6 +2102,13 @@ button.tier:active {
   background: radial-gradient(circle at 50% 40%, #4A1638 0%, #1E0A19 75%);
 }
 
+/* Vertical video (phones): 9:16, never taller than the screen */
+.video-frame.is-vertical {
+  aspect-ratio: 9 / 16;
+  width: min(100%, calc(78vh * 9 / 16));
+  margin: 0 auto;
+}
+
 .video-frame iframe,
 .video-frame video {
   position: absolute;

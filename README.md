@@ -69,17 +69,24 @@ Dans Brand Hunters, chaque mauvaise réponse coûte −50, mais seulement si le 
 - **Retour en arrière :** ‹ (chasseur précédent) remet les pénalités en attente ; « Undo » fonctionne normalement.
 - **Fin de partie :** « End game » annule les pénalités encore en attente, et la confirmation l'indique.
 
-### Vidéo des règles
+### Vidéos des règles
 
-La page Rules affiche « Rules video coming soon » tant qu'aucune vidéo n'est renseignée. Quand la vidéo est prête, ouvrez `script.js` et remplissez la constante en haut du fichier :
+La page Rules affiche une vidéo différente selon l'écran. Les liens se trouvent en haut de `script.js` :
 
 ```js
-const RULES_VIDEO_URL = 'https://youtu.be/XXXXXXXXXXX'; // lien YouTube
-// ou
-const RULES_VIDEO_URL = 'rules.mp4';                    // fichier vidéo placé à côté d'index.html
+const RULES_VIDEOS = Object.freeze({
+  desktop: 'https://youtu.be/qfEYmCxW9WQ', // 16:9, pour ordinateur et tablette à l'horizontale
+  mobile: '',                              // verticale (9:16), pour téléphone
+});
 ```
 
-Une vidéo YouTube est intégrée en mode « confidentialité renforcée » (`youtube-nocookie.com`).
+- **Écrans de moins de 900 px de large** (téléphones, tablettes à la verticale) : ils reçoivent la vidéo `mobile`, dans un cadre vertical qui ne dépasse jamais la hauteur de l'écran. Tant que `mobile` est vide, ils reçoivent la vidéo `desktop`.
+- **Écrans plus larges** : ils reçoivent la vidéo `desktop`, en 16:9.
+- Si on redimensionne la fenêtre ou qu'on tourne une tablette, la page change de vidéo.
+- On peut mettre un lien YouTube (`youtu.be/…`, `youtube.com/watch?v=…` ou `youtube.com/shorts/…`) ou le nom d'un fichier vidéo placé à côté d'`index.html` (par exemple `rules-mobile.mp4`).
+- Si les deux sont vides, la page affiche « Rules video coming soon ».
+
+Les vidéos YouTube sont intégrées en mode « confidentialité renforcée » (`youtube-nocookie.com`). Elles doivent être publiques ou non répertoriées (une vidéo privée ne s'affiche pas), avec l'intégration autorisée (réglage par défaut de YouTube).
 
 ### Règles du jeu
 

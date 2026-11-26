@@ -30,11 +30,18 @@ const STORAGE_KEYS = Object.freeze({
 });
 
 /**
- * Rules video. Paste a YouTube link (e.g. "https://youtu.be/XXXXXXXXXXX")
- * or the path of a video file placed next to index.html (e.g. "rules.mp4").
- * Leave empty to show “Rules video coming soon”.
+ * Rules videos: a YouTube link (e.g. "https://youtu.be/XXXXXXXXXXX") or the
+ * path of a video file placed next to index.html (e.g. "rules.mp4").
+ *   desktop: 16:9 video, for computers and tablets in landscape;
+ *   mobile:  vertical video (9:16) for phones. Empty = phones get the desktop one.
+ * Both empty: “Rules video coming soon”.
  */
-const RULES_VIDEO_URL = '';
+const RULES_VIDEOS = Object.freeze({
+  desktop: 'https://youtu.be/qfEYmCxW9WQ',
+  mobile: '',
+});
+/** Screens that get the mobile video (same breakpoint as the compact navigation). */
+const MOBILE_VIDEO_QUERY = '(max-width: 899px)';
 
 
 const MIN_PLAYERS = 2;
@@ -2270,16 +2277,25 @@ function youtubeId(url) {
   return match ? match[1] : null;
 }
 
-let rulesRendered = false;
+const mobileVideoMedia = window.matchMedia ? window.matchMedia(MOBILE_VIDEO_QUERY) : null;
+let renderedRulesVideo = null; // URL in the player (so a playing video isn't reloaded)
+
+/** The video for this screen: the mobile one on a phone, if there is one. */
+function rulesVideo() {
+  const mobile = RULES_VIDEOS.mobile.trim();
+  if (mobile && mobileVideoMedia && mobileVideoMedia.matches) return { url: mobile, vertical: true };
+  return { url: RULES_VIDEOS.desktop.trim() || mobile, vertical: !RULES_VIDEOS.desktop.trim() && Boolean(mobile) };
+}
 
 function renderRules() {
-  if (rulesRendered) return;
-  rulesRendered = true;
+  const { url, vertical } = rulesVideo();
+  if (renderedRulesVideo === url) return;
+  renderedRulesVideo = url;
   const frame = $('#rules-video');
-  const url = RULES_VIDEO_URL.trim();
+  frame.classList.toggle('is-vertical', vertical);
   const id = youtubeId(url);
   if (id) {
-    frame.innerHTML = `<iframe src="https://www.youtube-nocookie.com/embed/${id}" title="Brand Hunters rules video" loading="lazy"
+    frame.innerHTML = `<iframe src="https://www.youtube-nocookie.com/embed/${id}?rel=0&amp;playsinline=1" title="Brand Hunters rules video" loading="lazy"
       allow="accelerometer; encrypted-media; gyroscope; picture-in-picture; fullscreen" allowfullscreen></iframe>`;
   } else if (url) {
     frame.innerHTML = `<video src="${escapeHtml(url)}" controls playsinline preload="metadata"></video>`;
@@ -2438,6 +2454,13 @@ function bindEvents() {
   document.addEventListener('change', onChange);
   document.addEventListener('keydown', onKeydown);
   document.addEventListener('pointerdown', primeAudio, { passive: true });
+
+  // Phone ↔ computer size (window resized, tablet turned): the right rules video
+  if (mobileVideoMedia && RULES_VIDEOS.mobile.trim()) {
+    const onVideoMediaChange = () => { if (state.route === 'rules') renderRules(); };
+    if (mobileVideoMedia.addEventListener) mobileVideoMedia.addEventListener('change', onVideoMediaChange);
+    else if (mobileVideoMedia.addListener) mobileVideoMedia.addListener(onVideoMediaChange); // older Safari
+  }
 
   // Keeps the keyboard open when tapping “±” or a hunter in the custom points window.
   document.addEventListener('mousedown', (event) => {
