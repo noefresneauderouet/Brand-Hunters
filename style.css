@@ -1073,6 +1073,16 @@ button.tier:active {
   height: 0.75em;
 }
 
+/* Most Wanted has 5 stars: a bit smaller so they fit the narrow tile */
+.tier-row .tier-wanted .tier-stars {
+  gap: 1px;
+}
+
+.tier-row .tier-wanted .tier-stars .icon {
+  width: 0.62em;
+  height: 0.62em;
+}
+
 .extra-row {
   display: flex;
   flex-wrap: wrap;

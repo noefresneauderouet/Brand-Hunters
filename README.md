@@ -38,7 +38,7 @@ Chaque page a sa propre adresse, ce qui fait aussi fonctionner le bouton « reto
   - **Joueurs :** de 2 à 10 chasseurs, chacun avec une étoile de couleur. Les noms sont obligatoires et doivent être différents. Une icône corbeille retire un chasseur.
   - **Ordre de passage :** c'est l'ordre de la liste. « Shuffle » fait un tirage au sort, à refaire autant de fois qu'on veut. Pour un ordre manuel, on glisse les poignées ⠿ (ou flèches ↑ ↓ au clavier).
   - **Round timer :** les flèches proposent Off, 30, 45, 50, 60 ou 75 s. On peut aussi taper n'importe quelle durée de 5 s à 60 min (`90`, `1:30`…).
-  - **Bounty :** les primes Pickpocket (★), Bandit (★★), Outlaw (★★★) et Most Wanted (★★★★), plus Bonus et Wrong answer. « Edit » permet de changer les valeurs ; elles sont gardées pour les parties suivantes, avec un bouton « Reset to defaults ».
+  - **Bounty :** les primes Pickpocket (★), Bandit (★★), Outlaw (★★★) et Most Wanted (★★★★★), comme dans le livret de règles (100, 200, 300 et 500), plus Bonus et Wrong answer. « Edit » permet de changer les valeurs ; elles sont gardées pour les parties suivantes, avec un bouton « Reset to defaults ».
   - **House rules :** règle de victoire (score le plus haut ou le plus bas) et règle des mauvaises réponses (voir plus bas).
 - **The hunt**
   - **Current hunter :** le chasseur dont c'est le tour, avec ‹ › pour passer au précédent ou au suivant.
@@ -179,7 +179,7 @@ Les clés gardent les noms des versions précédentes : les parties en cours et 
 | `compteurPoints.v1.partieEnCours` | La partie en cours (absente s'il n'y en a pas) |
 | `compteurPoints.v1.historique` | Les parties terminées, de la plus récente à la plus ancienne (200 max) |
 | `compteurPoints.v1.configuration` | Le formulaire New game : chasseurs (nom et couleur, dans l'ordre de passage), règles, minuteur |
-| `compteurPoints.v1.primes` | Les valeurs des primes : `{ "easy": 100, "medium": 200, "difficult": 300, "wanted": 400, "bonus": 50, "penalty": 50 }` |
+| `compteurPoints.v1.primes` | Les valeurs des primes, enregistrées seulement si on les modifie : `{ "easy": 100, "medium": 200, "difficult": 300, "wanted": 500, "bonus": 50, "penalty": 50, "version": 2 }`. Sans `version`, elles datent d'avant l'alignement sur le livret : un Most Wanted resté à 400 (l'ancienne valeur par défaut) passe alors à 500. |
 | `compteurPoints.v1.preferences` | Préférences : `{ "sound": true }` |
 
 `compteurPoints.v1.boutonsRapides`, la clé des anciens boutons rapides, n'est plus utilisée.

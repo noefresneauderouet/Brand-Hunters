@@ -73,10 +73,13 @@ const BOUNTY_TIERS = Object.freeze([
   { key: 'easy', label: 'Pickpocket', stars: 1 },
   { key: 'medium', label: 'Bandit', stars: 2 },
   { key: 'difficult', label: 'Outlaw', stars: 3 },
-  { key: 'wanted', label: 'Most Wanted', stars: 4 },
+  { key: 'wanted', label: 'Most Wanted', stars: 5 },
 ]);
 /** Default points; “penalty” is the wrong-answer value (applied as a negative). */
-const DEFAULT_BOUNTIES = Object.freeze({ easy: 100, medium: 200, difficult: 300, wanted: 400, bonus: 50, penalty: 50 });
+/** Values from the rulebook (Card levels). */
+const DEFAULT_BOUNTIES = Object.freeze({ easy: 100, medium: 200, difficult: 300, wanted: 500, bonus: 50, penalty: 50 });
+/** Saved bounty values: version 2 = Most Wanted aligned with the rulebook ($500). */
+const BOUNTIES_VERSION = 2;
 const BOUNTY_LABELS = Object.freeze({ easy: 'Pickpocket', medium: 'Bandit', difficult: 'Outlaw', wanted: 'Most Wanted', bonus: 'Bonus', penalty: 'Wrong answer' });
 
 /** One star colour per hunter (the 4 tier colours first, then western tones). */
@@ -362,6 +365,11 @@ function loadBounties() {
       const v = Number(saved[key]);
       if (Number.isFinite(v) && v > 0 && v <= MAX_POINTS) bounties[key] = roundScore(v);
     });
+    // Saved before the rulebook: Most Wanted was 400 by default, it is now 500.
+    if (saved.version !== BOUNTIES_VERSION && bounties.wanted === 400) {
+      bounties.wanted = DEFAULT_BOUNTIES.wanted;
+      store.write(STORAGE_KEYS.bounties, { ...bounties, version: BOUNTIES_VERSION });
+    }
   }
   return bounties;
 }
@@ -401,7 +409,7 @@ function loadPrefs() {
 
 const saveSetup = () => store.write(STORAGE_KEYS.setup, state.setup);
 const saveHistory = () => store.write(STORAGE_KEYS.history, state.history);
-const saveBounties = () => store.write(STORAGE_KEYS.bounties, state.bounties);
+const saveBounties = () => store.write(STORAGE_KEYS.bounties, { ...state.bounties, version: BOUNTIES_VERSION });
 const savePrefs = () => store.write(STORAGE_KEYS.prefs, state.prefs);
 
 function saveGame() {
