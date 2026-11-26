@@ -76,7 +76,7 @@ La page Rules affiche une vidéo différente selon l'écran. Les liens se trouve
 ```js
 const RULES_VIDEOS = Object.freeze({
   desktop: 'https://youtu.be/qfEYmCxW9WQ', // 16:9, pour ordinateur et tablette à l'horizontale
-  mobile: '',                              // verticale (9:16), pour téléphone
+  mobile: 'https://youtu.be/XCF_9mn7qFE',  // verticale (9:16), pour téléphone
 });
 ```
 

@@ -38,7 +38,7 @@ const STORAGE_KEYS = Object.freeze({
  */
 const RULES_VIDEOS = Object.freeze({
   desktop: 'https://youtu.be/qfEYmCxW9WQ',
-  mobile: '',
+  mobile: 'https://youtu.be/XCF_9mn7qFE',
 });
 /** Screens that get the mobile video (same breakpoint as the compact navigation). */
 const MOBILE_VIDEO_QUERY = '(max-width: 899px)';
