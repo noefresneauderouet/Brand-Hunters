@@ -2072,6 +2072,15 @@ button.tier:active {
   text-align: center;
 }
 
+.rules-wanted {
+  color: var(--orange);
+  font-size: 0.75rem;
+  font-weight: 700;
+  letter-spacing: 0.22em;
+  text-transform: uppercase;
+  text-wrap: balance;
+}
+
 .rules-tagline {
   text-wrap: balance;
   color: var(--sand);
@@ -2287,6 +2296,26 @@ button.tier:active {
   color: var(--minus-text);
 }
 
+/* “Never read the forbidden words aloud” */
+.rule-warning {
+  display: flex;
+  align-items: flex-start;
+  gap: 10px;
+  padding: 12px 14px;
+  border: 1.5px solid rgba(255, 138, 117, 0.55);
+  border-radius: 16px;
+  background: rgba(209, 75, 53, 0.2);
+}
+
+.rule-warning .icon {
+  margin-top: 0.15em;
+  color: var(--minus-text);
+}
+
+.rule-warning b {
+  color: var(--minus-text);
+}
+
 /* Allowed / not allowed */
 .do-dont {
   display: grid;
@@ -2373,6 +2402,13 @@ button.tier:active {
 
 .rules-outro .icon {
   color: var(--orange);
+}
+
+.rules-credits {
+  margin-top: -4px;
+  color: var(--muted);
+  font-size: 0.8125rem;
+  text-align: center;
 }
 
 .rules-outro span {

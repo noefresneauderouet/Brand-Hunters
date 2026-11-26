@@ -367,21 +367,23 @@
         <div class="video-frame" id="rules-video"></div>
       </section>
 
-      <!-- Game rules, condensed from the printed rulebook -->
+      <!-- Game rules, condensed from the printed leaflet (v8) -->
       <section class="card rules-intro" aria-labelledby="rules-tagline">
+        <p class="rules-wanted">Wanted: the world’s most famous logos</p>
         <p class="rules-tagline" id="rules-tagline">Describe it. Draw it. Hunt it down!</p>
         <p>The world’s most famous brands have escaped. Listen to the Witness, find the Fugitive and collect the bounty!</p>
         <p class="card-hint">It’s a learning game too: the Witness practises describing in English, the Hunter practises listening, and everyone discovers the story behind each logo.</p>
         <ul class="rules-facts">
           <li><svg class="icon" aria-hidden="true"><use href="#i-users"></use></svg><span><b>2 to 4</b> players</span></li>
-          <li><svg class="icon" aria-hidden="true"><use href="#i-cards"></use></svg><span><b>54 cards</b> (50 Fugitives + 4 Jokers) and a score sheet (QR code on the box)</span></li>
-          <li><svg class="icon" aria-hidden="true"><use href="#i-edit"></use></svg><span><b>You need</b> paper, pencils and a timer</span></li>
+          <li><svg class="icon" aria-hidden="true"><use href="#i-cards"></use></svg><span><b>54 cards</b>: 50 Fugitives and 4 Jokers</span></li>
+          <li><svg class="icon" aria-hidden="true"><use href="#i-edit"></use></svg><span><b>You also need</b> paper, pencils, a timer and a phone</span></li>
+          <li><svg class="icon" aria-hidden="true"><use href="#i-chart"></use></svg><span><b>Score sheet:</b> you’re in it! This app keeps track of your bounties during the game.</span></li>
         </ul>
       </section>
 
       <article class="card rule-card" aria-labelledby="rule-1">
         <h2 class="rule-title" id="rule-1"><span class="rule-num" aria-hidden="true">1</span>Goal</h2>
-        <p>Collect the highest total bounty by identifying brand logos.</p>
+        <p>Collect the <b class="rule-key">highest total bounty</b> by identifying brand logos.</p>
       </article>
 
       <article class="card rule-card" aria-labelledby="rule-2">
@@ -398,47 +400,53 @@
         <ul class="rule-list">
           <li>Sort the cards into 4 piles: <span class="inline-stars" role="img" aria-label="1 star"><svg class="icon" aria-hidden="true"><use href="#i-star"></use></svg></span>, <span class="inline-stars" role="img" aria-label="2 stars"><svg class="icon" aria-hidden="true"><use href="#i-star"></use></svg><svg class="icon" aria-hidden="true"><use href="#i-star"></use></svg></span>, <span class="inline-stars" role="img" aria-label="3 stars"><svg class="icon" aria-hidden="true"><use href="#i-star"></use></svg><svg class="icon" aria-hidden="true"><use href="#i-star"></use></svg><svg class="icon" aria-hidden="true"><use href="#i-star"></use></svg></span> and <span class="inline-stars" role="img" aria-label="5 stars"><svg class="icon" aria-hidden="true"><use href="#i-star"></use></svg><svg class="icon" aria-hidden="true"><use href="#i-star"></use></svg><svg class="icon" aria-hidden="true"><use href="#i-star"></use></svg><svg class="icon" aria-hidden="true"><use href="#i-star"></use></svg><svg class="icon" aria-hidden="true"><use href="#i-star"></use></svg></span>. Each pile has one Joker. Shuffle, face down.</li>
           <li>Choose the number of rounds. In one round, every player is the Hunter once.</li>
-          <li>The youngest player is the first Hunter. The player on their left is the Witness.</li>
+          <li>Choose the first Hunter. The player on their left is the Witness.</li>
+          <li><b class="rule-key">Most Wanted forbidden words</b> are printed on the card. Before the game, decide together whether you play with them or not.</li>
         </ul>
       </article>
 
       <article class="card rule-card" aria-labelledby="rule-4">
-        <h2 class="rule-title" id="rule-4"><span class="rule-num" aria-hidden="true">4</span>Card levels</h2>
+        <h2 class="rule-title" id="rule-4"><span class="rule-num" aria-hidden="true">4</span>Jokers</h2>
+        <ul class="rule-list">
+          <li>Each pile hides one Joker. When the Witness draws it, they give it to the Hunter and draw another card from the same pile.</li>
+          <li>The Hunter keeps the Joker and can use it once, during any of their turns as Hunter. Follow the card.</li>
+        </ul>
+      </article>
+
+      <article class="card rule-card" aria-labelledby="rule-5">
+        <h2 class="rule-title" id="rule-5"><span class="rule-num" aria-hidden="true">5</span>Card levels</h2>
         <ul class="level-grid">
           <li class="tier level-tile tier-easy">
             <span class="tier-stars" role="img" aria-label="1 star"><svg class="icon" aria-hidden="true"><use href="#i-star"></use></svg></span>
             <span class="tier-label">Pickpocket</span>
             <span class="tier-value">$100</span>
-            <span class="level-meta"><span class="level-time"><svg class="icon" aria-hidden="true"><use href="#i-stopwatch"></use></svg>45 s</span><span>3 forbidden words</span></span>
+            <span class="level-meta"><span class="level-time"><svg class="icon" aria-hidden="true"><use href="#i-stopwatch"></use></svg>45 s</span></span>
           </li>
           <li class="tier level-tile tier-medium">
             <span class="tier-stars" role="img" aria-label="2 stars"><svg class="icon" aria-hidden="true"><use href="#i-star"></use></svg><svg class="icon" aria-hidden="true"><use href="#i-star"></use></svg></span>
             <span class="tier-label">Bandit</span>
             <span class="tier-value">$200</span>
-            <span class="level-meta"><span class="level-time"><svg class="icon" aria-hidden="true"><use href="#i-stopwatch"></use></svg>45 s</span><span>3 forbidden words</span></span>
+            <span class="level-meta"><span class="level-time"><svg class="icon" aria-hidden="true"><use href="#i-stopwatch"></use></svg>45 s</span></span>
           </li>
           <li class="tier level-tile tier-difficult">
             <span class="tier-stars" role="img" aria-label="3 stars"><svg class="icon" aria-hidden="true"><use href="#i-star"></use></svg><svg class="icon" aria-hidden="true"><use href="#i-star"></use></svg><svg class="icon" aria-hidden="true"><use href="#i-star"></use></svg></span>
             <span class="tier-label">Outlaw</span>
             <span class="tier-value">$300</span>
-            <span class="level-meta"><span class="level-time"><svg class="icon" aria-hidden="true"><use href="#i-stopwatch"></use></svg>60 s</span><span>3 forbidden words</span></span>
+            <span class="level-meta"><span class="level-time"><svg class="icon" aria-hidden="true"><use href="#i-stopwatch"></use></svg>60 s</span></span>
           </li>
           <li class="tier level-tile tier-wanted">
             <span class="tier-stars" role="img" aria-label="5 stars"><svg class="icon" aria-hidden="true"><use href="#i-star"></use></svg><svg class="icon" aria-hidden="true"><use href="#i-star"></use></svg><svg class="icon" aria-hidden="true"><use href="#i-star"></use></svg><svg class="icon" aria-hidden="true"><use href="#i-star"></use></svg><svg class="icon" aria-hidden="true"><use href="#i-star"></use></svg></span>
             <span class="tier-label">Most Wanted</span>
             <span class="tier-value">$500</span>
-            <span class="level-meta"><span class="level-time"><svg class="icon" aria-hidden="true"><use href="#i-stopwatch"></use></svg>75 s</span><span>no forbidden words</span></span>
+            <span class="level-meta"><span class="level-time"><svg class="icon" aria-hidden="true"><use href="#i-stopwatch"></use></svg>75 s</span></span>
           </li>
         </ul>
-        <p class="rule-callout">Missed shot: <b>−$50</b> at every level.</p>
-        <ul class="rule-list">
-          <li><b class="rule-key">Jokers unlock bonuses.</b> When the Witness draws one, they show it, keep it and draw another card from the same pile. Each Joker is used once, only when its owner is the Hunter. Follow the card.</li>
-        </ul>
+        <p class="rule-callout">Missed shot: <b>−$50</b> at every level. Forbidden words: check on the card.</p>
         <p class="rule-app"><svg class="icon" aria-hidden="true"><use href="#i-gamepad"></use></svg><span>In the app, tap the time on The Hunt to set 45, 60 or 75 s.</span></p>
       </article>
 
-      <article class="card rule-card" aria-labelledby="rule-5">
-        <h2 class="rule-title" id="rule-5"><span class="rule-num" aria-hidden="true">5</span>Playing a turn</h2>
+      <article class="card rule-card" aria-labelledby="rule-6">
+        <h2 class="rule-title" id="rule-6"><span class="rule-num" aria-hidden="true">6</span>Playing a turn</h2>
         <ol class="rule-steps">
           <li>The <b class="rule-key">Hunter</b> chooses a pile.</li>
           <li>The <b class="rule-key">Witness</b> takes the top card, keeps it secret and starts the timer.</li>
@@ -450,8 +458,8 @@
         </ol>
       </article>
 
-      <article class="card rule-card" aria-labelledby="rule-6">
-        <h2 class="rule-title" id="rule-6"><span class="rule-num" aria-hidden="true">6</span>The Witness’s rules</h2>
+      <article class="card rule-card" aria-labelledby="rule-7">
+        <h2 class="rule-title" id="rule-7"><span class="rule-num" aria-hidden="true">7</span>The Witness’s rules</h2>
         <div class="do-dont">
           <div class="do">
             <p class="do-title"><svg class="icon" aria-hidden="true"><use href="#i-check"></use></svg>Allowed</p>
@@ -462,11 +470,12 @@
             <p>The brand name or any translation of it, its slogan, its products, forbidden words, gestures, or any language except English.</p>
           </div>
         </div>
+        <p class="rule-warning"><svg class="icon" aria-hidden="true"><use href="#i-cross"></use></svg><span><b>Never read the forbidden words aloud.</b> They are only there to warn the Witness: saying one, even by reading it from the card, is a missed shot.</span></p>
         <p class="rule-callout">Breaking a rule counts as a missed shot, but doesn’t allow an ambush.</p>
       </article>
 
-      <article class="card rule-card" aria-labelledby="rule-7">
-        <h2 class="rule-title" id="rule-7"><span class="rule-num" aria-hidden="true">7</span>Missed shots &amp; Ambush!</h2>
+      <article class="card rule-card" aria-labelledby="rule-8">
+        <h2 class="rule-title" id="rule-8"><span class="rule-num" aria-hidden="true">8</span>Missed shots &amp; Ambush!</h2>
         <ul class="rule-list">
           <li>Each wrong name is a <b class="rule-key">missed shot</b>: the bounty drops by $50. At $0, the turn ends.</li>
           <li>A player’s score can never decrease.</li>
@@ -481,27 +490,27 @@
         </ul>
       </article>
 
-      <article class="card rule-card" aria-labelledby="rule-8">
-        <h2 class="rule-title" id="rule-8"><span class="rule-num" aria-hidden="true">8</span>Scoring</h2>
+      <article class="card rule-card" aria-labelledby="rule-9">
+        <h2 class="rule-title" id="rule-9"><span class="rule-num" aria-hidden="true">9</span>Scoring</h2>
         <ul class="rule-list">
           <li><b class="rule-key">Hunter:</b> the bounty left after capturing the Fugitive.</li>
           <li><b class="rule-key">Witness:</b> half of that bounty (nothing after an ambush).</li>
           <li><b class="rule-key">Vulture:</b> half of the card’s original bounty after a successful ambush.</li>
           <li><b class="rule-key">Quick capture:</b> +$50 for the Hunter who guesses right in under 15 seconds.</li>
-          <li><b class="rule-key">Collection:</b> whoever finds the logo keeps the card. At the end, every 3 cards from the same gang earn +$100.
-            <ul class="gang-list" aria-label="The five gangs"><li>Social &amp; Streaming</li><li>Tech &amp; Gaming</li><li>Sport &amp; Fashion</li><li>Cars</li><li>Food &amp; Business</li></ul>
+          <li><b class="rule-key">Collection:</b> whoever finds the logo keeps the card. At the end, every 3 cards from the same gang earn +$100. There are six gangs:
+            <ul class="gang-list" aria-label="The six gangs"><li>Social &amp; Streaming</li><li>Tech &amp; Gaming</li><li>Sport &amp; Fashion</li><li>Cars</li><li>Food &amp; Business</li><li>Creator</li></ul>
           </li>
         </ul>
         <p class="rule-app"><svg class="icon" aria-hidden="true"><use href="#i-gamepad"></use></svg><span>In the app: <b>Wrong</b> = missed shot, <b>Bonus</b> = quick capture. Tap a hunter in the list to pay the Witness or a Vulture, and use <b>Custom</b> for any other amount.</span></p>
       </article>
 
-      <article class="card rule-card" aria-labelledby="rule-9">
-        <h2 class="rule-title" id="rule-9"><span class="rule-num" aria-hidden="true">9</span>Final round</h2>
+      <article class="card rule-card" aria-labelledby="rule-10">
+        <h2 class="rule-title" id="rule-10"><span class="rule-num" aria-hidden="true">10</span>Final round</h2>
         <p>All bounties and bonuses earned in the final round are <b class="rule-key">doubled</b>, except collection bonuses.</p>
       </article>
 
-      <article class="card rule-card" aria-labelledby="rule-10">
-        <h2 class="rule-title" id="rule-10"><span class="rule-num" aria-hidden="true">10</span>Winning</h2>
+      <article class="card rule-card" aria-labelledby="rule-11">
+        <h2 class="rule-title" id="rule-11"><span class="rule-num" aria-hidden="true">11</span>Winning</h2>
         <ul class="rule-list">
           <li>The highest total is the <b class="rule-key">“Best Hunter in Town”</b>.</li>
           <li>Tie: the player with the most captured cards wins. Still tied: the tied players play another round.</li>
@@ -509,6 +518,7 @@
       </article>
 
       <p class="rules-outro"><svg class="icon" aria-hidden="true"><use href="#i-star"></use></svg><span>Have fun, Brand Hunters!</span><svg class="icon" aria-hidden="true"><use href="#i-star"></use></svg></p>
+      <p class="rules-credits">A game made by Ines, Noé and Baptiste · MDS 2026</p>
     </section>
 
     <!-- ===================================================================

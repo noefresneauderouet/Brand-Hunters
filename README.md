@@ -81,7 +81,7 @@ Une vidéo YouTube est intégrée en mode « confidentialité renforcée » (`yo
 
 ### Règles du jeu
 
-Sous la vidéo, la page Rules reprend toutes les règles du livret (*Brand Hunters Rules*), en plus court. On y trouve les 10 sections : Goal, Roles, Setup, Card levels, Playing a turn, The Witness’s rules, Missed shots & Ambush!, Scoring, Final round et Winning.
+Sous la vidéo, la page Rules reprend toutes les règles du dépliant (*Brand Hunters Leaflet v8*), en plus court. On y trouve les 11 sections : Goal, Roles, Setup, Jokers, Card levels, Playing a turn, The Witness’s rules, Missed shots & Ambush!, Scoring (avec les six gangs), Final round et Winning. Les crédits du dépliant sont repris en bas de la page.
 - Les niveaux de cartes sont présentés avec les mêmes tuiles colorées que les boutons de primes.
 - Deux petites notes « In the app » expliquent comment faire avec l'appli : régler le temps, et noter les points du Witness ou d'un Vulture.
 
